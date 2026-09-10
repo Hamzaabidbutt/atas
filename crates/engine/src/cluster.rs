@@ -10,6 +10,85 @@
 use atas_core::{Instrument, Price, Qty, Side};
 use serde::{Deserialize, Serialize};
 
+/// How a ladder maps prices onto footprint rows.
+///
+/// A row is not necessarily one instrument tick. BTCUSDT ticks at 0.01, so a
+/// bar spanning a few dollars would have hundreds of rows — unreadable, and no
+/// more informative than a heatmap. Every order-flow platform therefore lets a
+/// row span several ticks, and conflating the two values means either an
+/// illegible ladder or an instrument whose order prices are quantised wrongly.
+/// They are different concepts and this type keeps them apart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LadderSpec {
+    /// The instrument's minimum price increment.
+    tick_size: Price,
+    /// Instrument ticks per footprint row. At least one.
+    ticks_per_row: u32,
+}
+
+impl LadderSpec {
+    /// One row per instrument tick.
+    pub fn per_tick(tick_size: Price) -> Self {
+        Self::new(tick_size, 1).expect("one tick per row is always valid")
+    }
+
+    /// A row spanning `ticks_per_row` instrument ticks.
+    pub fn new(tick_size: Price, ticks_per_row: u32) -> Result<Self, LadderSpecError> {
+        if !tick_size.is_positive() {
+            return Err(LadderSpecError::NonPositiveTick);
+        }
+        if ticks_per_row == 0 {
+            return Err(LadderSpecError::ZeroTicksPerRow);
+        }
+        // A row size that overflows would silently wrap into a nonsense price.
+        tick_size
+            .minor()
+            .checked_mul(ticks_per_row as i64)
+            .ok_or(LadderSpecError::RowTooLarge)?;
+        Ok(Self {
+            tick_size,
+            ticks_per_row,
+        })
+    }
+
+    /// The instrument's minimum price increment.
+    #[inline]
+    pub fn tick_size(self) -> Price {
+        self.tick_size
+    }
+
+    /// Instrument ticks per row.
+    #[inline]
+    pub fn ticks_per_row(self) -> u32 {
+        self.ticks_per_row
+    }
+
+    /// The price span of one row.
+    #[inline]
+    pub fn row_size(self) -> Price {
+        Price::from_minor(self.tick_size.minor() * self.ticks_per_row as i64)
+    }
+
+    /// The spec for an instrument, one row per tick.
+    pub fn for_instrument(instrument: &Instrument) -> Self {
+        Self::per_tick(instrument.tick_size)
+    }
+}
+
+/// An invalid [`LadderSpec`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum LadderSpecError {
+    /// Tick size was zero or negative.
+    #[error("tick size must be positive")]
+    NonPositiveTick,
+    /// A row must span at least one tick.
+    #[error("ticks per row must be at least 1")]
+    ZeroTicksPerRow,
+    /// Tick size times ticks per row overflows a price.
+    #[error("row size overflows a price")]
+    RowTooLarge,
+}
+
 /// Volume traded at a single price level within a bar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Cluster {
@@ -88,8 +167,8 @@ pub struct ValueArea {
 /// walk rows without reasoning about missing keys.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClusterLadder {
-    tick_size: Price,
-    /// Tick index of `rows[0]`. Meaningless while `rows` is empty.
+    spec: LadderSpec,
+    /// Row index of `rows[0]`. Meaningless while `rows` is empty.
     base_index: i64,
     rows: Vec<Cluster>,
     total_bid: Qty,
@@ -98,14 +177,15 @@ pub struct ClusterLadder {
 }
 
 impl ClusterLadder {
-    /// An empty ladder for an instrument's tick size.
+    /// An empty ladder with one row per instrument tick.
     pub fn new(tick_size: Price) -> Self {
-        assert!(
-            tick_size.is_positive(),
-            "tick size must be positive, got {tick_size:?}"
-        );
+        Self::with_spec(LadderSpec::per_tick(tick_size))
+    }
+
+    /// An empty ladder with the given row mapping.
+    pub fn with_spec(spec: LadderSpec) -> Self {
         Self {
-            tick_size,
+            spec,
             base_index: 0,
             rows: Vec::new(),
             total_bid: Qty::ZERO,
@@ -114,9 +194,21 @@ impl ClusterLadder {
         }
     }
 
-    /// An empty ladder for an instrument.
+    /// An empty ladder for an instrument, one row per tick.
     pub fn for_instrument(instrument: &Instrument) -> Self {
-        Self::new(instrument.tick_size)
+        Self::with_spec(LadderSpec::for_instrument(instrument))
+    }
+
+    /// How this ladder maps prices onto rows.
+    #[inline]
+    pub fn spec(&self) -> LadderSpec {
+        self.spec
+    }
+
+    /// The price span of one row.
+    #[inline]
+    pub fn row_size(&self) -> Price {
+        self.spec.row_size()
     }
 
     /// Record a trade at a price.
@@ -125,7 +217,7 @@ impl ClusterLadder {
     /// them) lands on the level below rather than being dropped or creating a
     /// phantom row.
     pub fn add(&mut self, price: Price, qty: Qty, aggressor: Side) {
-        let index = price.tick_index(self.tick_size);
+        let index = price.tick_index(self.spec.row_size());
         let slot = self.slot_for(index);
 
         match aggressor {
@@ -178,9 +270,12 @@ impl ClusterLadder {
     }
 
     /// The instrument tick size this ladder was built with.
+    ///
+    /// This is the instrument's increment, not the row height — see
+    /// [`ClusterLadder::row_size`].
     #[inline]
     pub fn tick_size(&self) -> Price {
-        self.tick_size
+        self.spec.tick_size()
     }
 
     /// Total volume across every level.
@@ -223,15 +318,18 @@ impl ClusterLadder {
         (!self.rows.is_empty()).then(|| self.price_at(self.rows.len() - 1))
     }
 
-    /// Price of a row slot.
+    /// Price at the bottom of a row slot.
+    ///
+    /// A row spanning several ticks is labelled by its lowest price, so a row
+    /// and the trades inside it always agree on which row they belong to.
     #[inline]
     fn price_at(&self, slot: usize) -> Price {
-        Price::from_tick_index(self.base_index + slot as i64, self.tick_size)
+        Price::from_tick_index(self.base_index + slot as i64, self.spec.row_size())
     }
 
     /// The cluster at an exact price, or an empty one if nothing traded there.
     pub fn at(&self, price: Price) -> Cluster {
-        let index = price.tick_index(self.tick_size);
+        let index = price.tick_index(self.spec.row_size());
         if self.rows.is_empty() || index < self.base_index {
             return Cluster::default();
         }
@@ -288,7 +386,7 @@ impl ClusterLadder {
             return None;
         }
 
-        let poc_slot = (poc_price.tick_index(self.tick_size) - self.base_index) as usize;
+        let poc_slot = (poc_price.tick_index(self.spec.row_size()) - self.base_index) as usize;
         let target = (total.minor() as f64 * fraction).round() as i64;
 
         let mut lower = poc_slot;
@@ -414,7 +512,7 @@ impl ClusterLadder {
 
         for imb in found {
             let continues = current.last().is_some_and(|prev| {
-                prev.side == imb.side && imb.price - prev.price == self.tick_size
+                prev.side == imb.side && imb.price - prev.price == self.spec.row_size()
             });
             if continues {
                 current.push(imb);
@@ -678,6 +776,166 @@ mod tests {
         assert_eq!(l.value_area(0.7), None);
         assert!(l.imbalances(2.0, Qty::ZERO).is_empty());
         assert_eq!(l.rows().count(), 0);
+    }
+
+    // --- Tick aggregation -------------------------------------------------
+
+    #[test]
+    fn a_spec_rejects_degenerate_configuration() {
+        assert_eq!(
+            LadderSpec::new(Price::ZERO, 4),
+            Err(LadderSpecError::NonPositiveTick)
+        );
+        assert_eq!(
+            LadderSpec::new(px("0.25"), 0),
+            Err(LadderSpecError::ZeroTicksPerRow)
+        );
+        assert_eq!(
+            LadderSpec::new(Price::MAX, 2),
+            Err(LadderSpecError::RowTooLarge)
+        );
+    }
+
+    #[test]
+    fn row_size_is_ticks_per_row_times_the_tick() {
+        let spec = LadderSpec::new(px("0.01"), 50).unwrap();
+        assert_eq!(spec.tick_size(), px("0.01"));
+        assert_eq!(spec.ticks_per_row(), 50);
+        assert_eq!(spec.row_size(), px("0.50"));
+
+        assert_eq!(LadderSpec::per_tick(px("0.25")).row_size(), px("0.25"));
+    }
+
+    #[test]
+    fn aggregation_folds_several_ticks_into_one_row() {
+        // Four 0.25 ticks per row: 100.00 through 100.75 is a single row.
+        let spec = LadderSpec::new(px("0.25"), 4).unwrap();
+        let mut l = ClusterLadder::with_spec(spec);
+
+        for price in ["100.00", "100.25", "100.50", "100.75"] {
+            l.add(px(price), qty("10"), Side::Buy);
+        }
+        assert_eq!(l.len(), 1, "four ticks must collapse to one row");
+        assert_eq!(l.total_volume(), qty("40"));
+
+        // The row is labelled by its lowest price, and every price inside it
+        // resolves to that same row.
+        assert_eq!(l.low().unwrap(), px("100.00"));
+        for price in ["100.00", "100.25", "100.50", "100.75"] {
+            assert_eq!(l.at(px(price)).ask, qty("40"), "price {price}");
+        }
+
+        // The next tick starts a new row.
+        l.add(px("101.00"), qty("5"), Side::Buy);
+        assert_eq!(l.len(), 2);
+        assert_eq!(l.at(px("101.00")).ask, qty("5"));
+    }
+
+    #[test]
+    fn aggregation_shrinks_a_wide_bar_to_a_readable_ladder() {
+        // The case that motivated this: a 0.01 tick over a two-dollar range is
+        // 201 rows, which can only render as a heatmap.
+        let fine = {
+            let mut l = ClusterLadder::new(px("0.01"));
+            for i in 0..=200 {
+                l.add(Price::from_minor(9_500_000_000_000 + i * 1_000_000), qty("1"), Side::Buy);
+            }
+            l
+        };
+        assert_eq!(fine.len(), 201);
+
+        let coarse = {
+            let spec = LadderSpec::new(px("0.01"), 25).unwrap();
+            let mut l = ClusterLadder::with_spec(spec);
+            for i in 0..=200 {
+                l.add(Price::from_minor(9_500_000_000_000 + i * 1_000_000), qty("1"), Side::Buy);
+            }
+            l
+        };
+        assert_eq!(coarse.len(), 9, "25 ticks per row makes it legible");
+        // Aggregation must not lose or invent volume.
+        assert_eq!(coarse.total_volume(), fine.total_volume());
+        assert_eq!(coarse.trade_count(), fine.trade_count());
+    }
+
+    #[test]
+    fn aggregated_rows_keep_their_sides_apart() {
+        // Folding ticks together must not merge bid and ask volume.
+        let spec = LadderSpec::new(px("0.25"), 4).unwrap();
+        let mut l = ClusterLadder::with_spec(spec);
+        l.add(px("100.00"), qty("30"), Side::Sell);
+        l.add(px("100.50"), qty("70"), Side::Buy);
+
+        let row = l.at(px("100.25"));
+        assert_eq!(row.bid, qty("30"));
+        assert_eq!(row.ask, qty("70"));
+        assert_eq!(row.delta(), qty("40"));
+        assert_eq!(row.trades, 2);
+    }
+
+    #[test]
+    fn imbalance_is_diagonal_across_aggregated_rows() {
+        // The diagonal is one *row* below, not one tick below, or aggregation
+        // would silently compare against a row that is not adjacent.
+        let spec = LadderSpec::new(px("0.25"), 4).unwrap();
+        let mut l = ClusterLadder::with_spec(spec);
+
+        // Row at 100.00 (covers 100.00-100.75): 10 on the bid.
+        l.add(px("100.50"), qty("10"), Side::Sell);
+        // Row at 101.00 (covers 101.00-101.75): 50 on the ask.
+        l.add(px("101.25"), qty("50"), Side::Buy);
+
+        let found = l.imbalances(3.0, Qty::ZERO);
+        let buys: Vec<_> = found.iter().filter(|i| i.side == Side::Buy).collect();
+        assert_eq!(buys.len(), 1);
+        assert_eq!(buys[0].price, px("101.00"), "labelled by the row's low");
+        assert!((buys[0].ratio - 5.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stacked_runs_step_by_a_row_not_a_tick() {
+        let spec = LadderSpec::new(px("0.25"), 2).unwrap(); // row = 0.50
+        let mut l = ClusterLadder::with_spec(spec);
+        for i in 0..5 {
+            let price = px("100.00") + px("0.50") * i;
+            l.add(price, qty("2"), Side::Sell);
+            l.add(price, qty("20"), Side::Buy);
+        }
+
+        let runs = l.stacked_imbalances(3.0, Qty::ZERO, 3);
+        assert_eq!(runs.len(), 1, "consecutive rows must be recognised as a run");
+        for pair in runs[0].windows(2) {
+            assert_eq!(pair[1].price - pair[0].price, px("0.50"));
+        }
+    }
+
+    #[test]
+    fn a_ladder_reports_both_its_tick_and_its_row_size() {
+        let spec = LadderSpec::new(px("0.01"), 50).unwrap();
+        let l = ClusterLadder::with_spec(spec);
+        assert_eq!(l.tick_size(), px("0.01"), "the instrument increment");
+        assert_eq!(l.row_size(), px("0.50"), "the footprint row height");
+        assert_eq!(l.spec().ticks_per_row(), 50);
+    }
+
+    #[test]
+    fn one_tick_per_row_is_unchanged_behaviour() {
+        // The default must be exactly what it was before aggregation existed.
+        let a = tapered();
+        let mut b = ClusterLadder::with_spec(LadderSpec::per_tick(tick()));
+        for (price, bid, ask) in [
+            ("100.00", "10", "5"),
+            ("100.25", "20", "15"),
+            ("100.50", "60", "70"),
+            ("100.75", "18", "12"),
+            ("101.00", "8", "4"),
+        ] {
+            b.add(px(price), qty(bid), Side::Sell);
+            b.add(px(price), qty(ask), Side::Buy);
+        }
+        assert_eq!(a.len(), b.len());
+        assert_eq!(a.poc(), b.poc());
+        assert_eq!(a.total_volume(), b.total_volume());
     }
 
     #[test]

@@ -108,7 +108,12 @@ export interface FillDto {
 export interface SnapshotDto {
   instrument: string;
   scale: number;
+  /** The instrument's minimum price increment. */
   tick_size: Minor;
+  /** Height of one footprint row. May span several instrument ticks. */
+  row_size: Minor;
+  /** Instrument ticks per footprint row. */
+  ticks_per_row: number;
   price_decimals: number;
   bars: BarDto[];
   book: BookDto;

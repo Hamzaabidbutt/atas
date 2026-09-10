@@ -15,4 +15,6 @@ pub mod cluster;
 
 pub use aggregator::{Aggregator, BarSpec, SpecError};
 pub use bar::Bar;
-pub use cluster::{Cluster, ClusterLadder, ClusterRow, Imbalance, ValueArea};
+pub use cluster::{
+    Cluster, ClusterLadder, ClusterRow, Imbalance, LadderSpec, LadderSpecError, ValueArea,
+};

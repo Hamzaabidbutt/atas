@@ -198,16 +198,11 @@ fn set_bar_spec(state: tauri::State<'_, AppState>, spec: BarSpecRequest) -> Resu
 /// start — both are unrecoverable at launch, and a window that opens without a
 /// working session would be worse than no window.
 pub fn run() {
-    // The tick size here is the *footprint row* size, not necessarily the
-    // venue's minimum increment. BTCUSDT ticks at 0.01, which at a 95,000
-    // price puts ~150 rows in a single bar — far too many to read, and every
-    // real platform aggregates ticks per level for exactly this reason.
-    // Until that aggregation exists (see the README), the shell picks a row
-    // size that produces a legible ladder.
+    // The instrument's real increment. Order prices quantise to this.
     let instrument = Instrument::spot(
         "BTCUSDT",
         Venue::Sim,
-        Price::parse("0.5").expect("valid tick size"),
+        Price::parse("0.01").expect("valid tick size"),
         Qty::parse("0.00001").expect("valid quantity step"),
     );
 
@@ -219,6 +214,10 @@ pub fn run() {
         instrument.clone(),
         SessionConfig {
             bar_spec: BarSpec::Tick { count: 60 },
+            // A 0.01 increment would put hundreds of rows in a bar spanning a
+            // few dollars. Aggregating ticks into rows is a display choice and
+            // leaves order prices at the instrument's real increment.
+            ticks_per_row: 25,
             ..SessionConfig::default()
         },
     )
@@ -246,7 +245,11 @@ pub fn run() {
             // Until a venue is selected in the UI, the synthetic feed keeps
             // the app usable offline. Swapping in `atas_feed::live::binance`
             // is a one-line change here.
-            let mut feed = SyntheticFeed::new(&instrument, 0xA7A5, Price::from_units(95_000));
+            // A step of one 0.01 tick would move the market a cent at a time,
+            // which is not what BTCUSDT does and collapses a bar into a single
+            // footprint row. Twenty ticks is twenty cents a print.
+            let mut feed = SyntheticFeed::new(&instrument, 0xA7A5, Price::from_units(95_000))
+                .with_tick_step(20);
 
             std::thread::spawn(move || {
                 loop {

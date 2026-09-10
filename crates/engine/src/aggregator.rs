@@ -16,6 +16,7 @@ use atas_core::{Instrument, Price, Qty, Trade, Ts};
 use serde::{Deserialize, Serialize};
 
 use crate::bar::Bar;
+use crate::cluster::LadderSpec;
 
 /// The rule that decides when a bar closes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,7 +95,7 @@ pub enum SpecError {
 /// Builds bars from a trade stream under one [`BarSpec`].
 #[derive(Debug, Clone)]
 pub struct Aggregator {
-    tick_size: Price,
+    ladder: LadderSpec,
     spec: BarSpec,
     current: Option<Bar>,
     /// Bars closed by the most recent trade. Cleared at the top of each call.
@@ -105,7 +106,7 @@ pub struct Aggregator {
 }
 
 impl Aggregator {
-    /// Create an aggregator for an instrument.
+    /// Create an aggregator for an instrument, one ladder row per tick.
     ///
     /// Returns an error rather than panicking on a bad spec, because specs
     /// come from user-editable workspace files.
@@ -113,12 +114,19 @@ impl Aggregator {
         Self::with_tick_size(instrument.tick_size, spec)
     }
 
-    /// Create an aggregator from a raw tick size.
+    /// Create an aggregator from a raw tick size, one ladder row per tick.
     pub fn with_tick_size(tick_size: Price, spec: BarSpec) -> Result<Self, SpecError> {
+        Self::with_ladder(LadderSpec::per_tick(tick_size), spec)
+    }
+
+    /// Create an aggregator with an explicit footprint row mapping.
+    ///
+    /// Row height is independent of the bar rule: an instrument can be traded
+    /// at a 0.01 tick while its footprint aggregates 25 ticks to a row.
+    pub fn with_ladder(ladder: LadderSpec, spec: BarSpec) -> Result<Self, SpecError> {
         spec.validate()?;
-        assert!(tick_size.is_positive(), "tick size must be positive");
         Ok(Self {
-            tick_size,
+            ladder,
             spec,
             current: None,
             just_closed: Vec::new(),
@@ -152,7 +160,7 @@ impl Aggregator {
                 self.close_current();
             }
             if self.current.is_none() {
-                self.current = Some(Bar::open(bucket, trade, self.tick_size));
+                self.current = Some(Bar::open_with(bucket, trade, self.ladder));
                 self.cum_delta += trade.signed_qty();
                 return &self.just_closed;
             }
@@ -160,7 +168,7 @@ impl Aggregator {
 
         match &mut self.current {
             Some(bar) => bar.apply(trade),
-            None => self.current = Some(Bar::open(trade.ts, trade, self.tick_size)),
+            None => self.current = Some(Bar::open_with(trade.ts, trade, self.ladder)),
         }
         self.cum_delta += trade.signed_qty();
 
@@ -180,8 +188,11 @@ impl Aggregator {
             BarSpec::Time { .. } => false,
             BarSpec::Tick { count } => bar.trades >= count,
             BarSpec::Volume { threshold } => bar.volume >= threshold,
+            // Range is measured in *instrument* ticks, not footprint rows: a
+            // bar's height is a property of the market, not of how the chart
+            // chooses to bucket it for display.
             BarSpec::Range { ticks } => {
-                bar.range().minor() >= self.tick_size.minor().saturating_mul(ticks)
+                bar.range().minor() >= self.ladder.tick_size().minor().saturating_mul(ticks)
             }
             BarSpec::Delta { threshold } => bar.delta().abs() >= threshold,
         }
@@ -220,6 +231,12 @@ impl Aggregator {
     #[inline]
     pub fn spec(&self) -> BarSpec {
         self.spec
+    }
+
+    /// The footprint row mapping bars are built with.
+    #[inline]
+    pub fn ladder(&self) -> LadderSpec {
+        self.ladder
     }
 
     /// How many trades were dropped for arriving out of order.
@@ -487,5 +504,77 @@ mod tests {
                 interval_nanos: 300 * NANOS_PER_SEC
             }
         );
+    }
+}
+
+#[cfg(test)]
+mod ladder_tests {
+    use super::*;
+    use crate::cluster::LadderSpec;
+    use atas_core::{Side, Venue};
+
+    fn px(s: &str) -> Price {
+        Price::parse(s).unwrap()
+    }
+    fn qty(s: &str) -> Qty {
+        Qty::parse(s).unwrap()
+    }
+    fn trade(ms: i64, price: &str, q: &str, side: Side) -> Trade {
+        Trade::new(Ts::from_millis(ms), px(price), qty(q), side, 0)
+    }
+
+    #[test]
+    fn bars_inherit_the_aggregators_row_mapping() {
+        let ladder = LadderSpec::new(px("0.25"), 4).unwrap();
+        let mut agg = Aggregator::with_ladder(ladder, BarSpec::Tick { count: 4 }).unwrap();
+
+        for (i, price) in ["100.00", "100.25", "100.50", "100.75"].iter().enumerate() {
+            let closed = agg.on_trade(&trade(i as i64, price, "10", Side::Buy));
+            if i == 3 {
+                assert_eq!(closed.len(), 1);
+                let bar = &closed[0];
+                assert_eq!(bar.clusters.len(), 1, "four ticks are one row");
+                assert_eq!(bar.clusters.row_size(), px("1.00"));
+                assert_eq!(bar.volume, qty("40"));
+                assert_eq!(bar.poc().unwrap(), px("100.00"));
+            }
+        }
+    }
+
+    #[test]
+    fn range_bars_measure_instrument_ticks_not_rows() {
+        // A bar's height is a property of the market. If range followed the
+        // row size, changing a display setting would silently change which
+        // bars exist.
+        let instrument = Instrument::spot("T", Venue::Sim, px("0.25"), qty("1"));
+        let fine = Aggregator::new(&instrument, BarSpec::Range { ticks: 4 }).unwrap();
+
+        let coarse_ladder = LadderSpec::new(px("0.25"), 8).unwrap();
+        let coarse = Aggregator::with_ladder(coarse_ladder, BarSpec::Range { ticks: 4 }).unwrap();
+
+        let mut a = fine;
+        let mut b = coarse;
+        let prints = [
+            (0, "100.00"),
+            (1, "100.50"),
+            (2, "101.00"),
+            (3, "101.25"),
+        ];
+        let mut a_closed = 0;
+        let mut b_closed = 0;
+        for (ms, price) in prints {
+            a_closed += a.on_trade(&trade(ms, price, "1", Side::Buy)).len();
+            b_closed += b.on_trade(&trade(ms, price, "1", Side::Buy)).len();
+        }
+        assert_eq!(a_closed, b_closed, "row size must not change bar boundaries");
+        assert!(a_closed > 0, "the range should have been reached");
+    }
+
+    #[test]
+    fn the_default_aggregator_uses_one_row_per_tick() {
+        let instrument = Instrument::spot("T", Venue::Sim, px("0.25"), qty("1"));
+        let agg = Aggregator::new(&instrument, BarSpec::Tick { count: 2 }).unwrap();
+        assert_eq!(agg.ladder().ticks_per_row(), 1);
+        assert_eq!(agg.ladder().row_size(), px("0.25"));
     }
 }

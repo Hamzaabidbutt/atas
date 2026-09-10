@@ -10,7 +10,7 @@
 use std::collections::VecDeque;
 
 use atas_core::{Instrument, MarketEvent, OrderBook, Price, Qty, Side, Trade, Ts};
-use atas_engine::{Aggregator, Bar, BarSpec, SpecError};
+use atas_engine::{Aggregator, Bar, BarSpec, LadderSpec, LadderSpecError, SpecError};
 use atas_indicators::{
     BarIndicator, BigTrade, BigTrades, ClusterCriteria, ClusterHit, ClusterSearch, Cvd, Divergence,
     SessionProfile, SpeedOfTape, TradeIndicator, Vwap,
@@ -27,6 +27,12 @@ use crate::dto::*;
 pub struct SessionConfig {
     /// Bar construction rule.
     pub bar_spec: BarSpec,
+    /// Instrument ticks per footprint row.
+    ///
+    /// Independent of the instrument's own increment: BTCUSDT ticks at 0.01,
+    /// which puts hundreds of rows in a bar spanning a few dollars. Raising
+    /// this makes the ladder legible without quantising order prices.
+    pub ticks_per_row: u32,
     /// How many completed bars to keep for the chart.
     pub bar_history: usize,
     /// How many tape rows to keep.
@@ -51,6 +57,7 @@ impl Default for SessionConfig {
     fn default() -> Self {
         Self {
             bar_spec: BarSpec::minutes(1),
+            ticks_per_row: 1,
             bar_history: 500,
             tape_length: 200,
             book_depth: 20,
@@ -62,6 +69,17 @@ impl Default for SessionConfig {
             scanner: ClusterCriteria::new(),
         }
     }
+}
+
+/// Why a session could not be built or reconfigured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ConfigError {
+    /// The bar rule was invalid.
+    #[error(transparent)]
+    BarSpec(#[from] SpecError),
+    /// The footprint row mapping was invalid.
+    #[error(transparent)]
+    Ladder(#[from] LadderSpecError),
 }
 
 /// Something the UI should react to.
@@ -138,11 +156,14 @@ pub struct Session {
 
 impl Session {
     /// Build a session for an instrument.
-    pub fn new(instrument: Instrument, config: SessionConfig) -> Result<Self, SpecError> {
-        let aggregator = Aggregator::new(&instrument, config.bar_spec)?;
+    pub fn new(instrument: Instrument, config: SessionConfig) -> Result<Self, ConfigError> {
+        let ladder = LadderSpec::new(instrument.tick_size, config.ticks_per_row)?;
+        let aggregator = Aggregator::with_ladder(ladder, config.bar_spec)?;
         let engine = PaperEngine::new(instrument.clone(), config.trading.clone());
         Ok(Self {
-            profile: SessionProfile::new(instrument.tick_size),
+            // The session profile shares the chart's row height, or its POC
+            // would mark a price the footprint has no row for.
+            profile: SessionProfile::with_spec(ladder),
             big_trades: BigTrades::new(config.big_trade_threshold, 100),
             speed: SpeedOfTape::new(config.speed_window_nanos),
             scanner: ClusterSearch::new(config.scanner.clone()),
@@ -390,6 +411,8 @@ impl Session {
             instrument: self.instrument.key(),
             scale: PRICE_SCALE,
             tick_size: self.instrument.tick_size.minor(),
+            row_size: self.ladder().row_size().minor(),
+            ticks_per_row: self.ladder().ticks_per_row(),
             price_decimals: self.instrument.price_decimals,
             bars,
             book: self.book_dto(),
@@ -453,13 +476,34 @@ impl Session {
     /// rule cannot be reinterpreted under the new one — only a replay from
     /// stored ticks can do that, and that is the caller's decision to make.
     pub fn set_bar_spec(&mut self, spec: BarSpec) -> Result<(), SpecError> {
-        self.aggregator = Aggregator::new(&self.instrument, spec)?;
+        self.aggregator = Aggregator::with_ladder(self.aggregator.ladder(), spec)?;
         self.config.bar_spec = spec;
         self.bars.clear();
         self.cvd.reset();
         self.vwap.reset();
         self.profile.reset();
         Ok(())
+    }
+
+    /// Change how many instrument ticks a footprint row spans.
+    ///
+    /// Chart history is discarded: existing bars were bucketed at the old row
+    /// height and re-bucketing them would need the ticks they were built from,
+    /// which the bars no longer carry.
+    pub fn set_ticks_per_row(&mut self, ticks_per_row: u32) -> Result<(), ConfigError> {
+        let ladder = LadderSpec::new(self.instrument.tick_size, ticks_per_row)?;
+        self.aggregator = Aggregator::with_ladder(ladder, self.config.bar_spec)?;
+        self.config.ticks_per_row = ticks_per_row;
+        self.bars.clear();
+        self.cvd.reset();
+        self.vwap.reset();
+        self.profile = SessionProfile::with_spec(ladder);
+        Ok(())
+    }
+
+    /// The footprint row mapping in use.
+    pub fn ladder(&self) -> LadderSpec {
+        self.aggregator.ladder()
     }
 
     /// Replace the scanner criteria and clear previous hits.

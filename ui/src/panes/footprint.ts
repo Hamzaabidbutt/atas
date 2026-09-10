@@ -87,16 +87,19 @@ export class FootprintChart {
       hi = Math.max(hi, bar.high);
       lo = Math.min(lo, bar.low);
     }
-    const pad = Math.max((hi - lo) * 0.06, snapshot.tick_size * 2);
+    const pad = Math.max((hi - lo) * 0.06, snapshot.row_size * 2);
     hi += pad;
     lo -= pad;
-    const span = Math.max(hi - lo, snapshot.tick_size);
+    const span = Math.max(hi - lo, snapshot.row_size);
 
     const y = (price: number) =>
       PADDING.top + ((hi - price) / span) * plotHeight;
 
-    const tickPixels = (snapshot.tick_size / span) * plotHeight;
-    const cellHeight = Math.max(2, Math.min(this.options.maxCellHeight, tickPixels));
+    // Cell height follows the *row* size, not the instrument tick. Using the
+    // tick would draw one-cent cells for an instrument whose footprint
+    // aggregates 25 ticks to a row, leaving gaps between every drawn cell.
+    const rowPixels = (snapshot.row_size / span) * plotHeight;
+    const cellHeight = Math.max(2, Math.min(this.options.maxCellHeight, rowPixels));
     const showText = cellHeight >= this.options.minTextHeight;
 
     this.drawGrid(ctx, snapshot, width, plotHeight, lo, hi, y);

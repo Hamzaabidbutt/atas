@@ -325,6 +325,37 @@ fn synthetic_price_stays_near_its_anchor() {
 }
 
 #[test]
+fn the_tick_step_scales_volatility_with_tick_size() {
+    // A step of one tick means something different for a 0.01 instrument than
+    // for a 0.25 one; the generator must let volatility be set independently.
+    let inst = instrument(); // ticks at 0.01
+    let range_of = |step: i64| {
+        let mut feed = SyntheticFeed::new(&inst, 31, px("95000.00"))
+            .with_book_every(0)
+            .with_tick_step(step)
+            .with_limit(2_000);
+        let mut low = Price::MAX;
+        let mut high = Price::MIN;
+        for event in drain(&mut feed).unwrap() {
+            if let MarketEvent::Trade(t) = event {
+                low = low.min(t.price);
+                high = high.max(t.price);
+            }
+        }
+        high - low
+    };
+
+    let narrow = range_of(1);
+    let wide = range_of(20);
+    assert!(
+        wide > narrow,
+        "a larger step must produce a wider range: {wide} vs {narrow}"
+    );
+    // And it still reverts rather than trending away.
+    assert!(wide < px("500.00"), "walked {wide} with a 20-tick step");
+}
+
+#[test]
 fn synthetic_feeds_the_aggregator_without_dropped_trades() {
     let inst = instrument();
     let mut feed = SyntheticFeed::new(&inst, 21, px("95000.00")).with_limit(20_000);

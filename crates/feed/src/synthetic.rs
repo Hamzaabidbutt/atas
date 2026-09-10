@@ -20,6 +20,8 @@ pub struct SyntheticFeed {
     anchor_index: i64,
     ts: Ts,
     step_nanos: i64,
+    /// Instrument ticks a single trade can move the price.
+    tick_step: i64,
     emitted: u64,
     limit: Option<u64>,
     book_every: u64,
@@ -37,12 +39,26 @@ impl SyntheticFeed {
             price_index: anchor,
             anchor_index: anchor,
             ts: Ts::from_millis(1_700_000_000_000),
+            tick_step: 1,
             step_nanos: atas_core::time::NANOS_PER_MILLI * 25,
             emitted: 0,
             limit: None,
             book_every: 20,
             depth: 10,
         }
+    }
+
+    /// Set how many instrument ticks one trade moves the price.
+    ///
+    /// Volatility has to be expressible independently of tick size. A step of
+    /// one tick means something completely different for an instrument that
+    /// ticks at 0.25 than for one that ticks at 0.01 — on the latter the
+    /// market would only ever move cents, and a whole bar would collapse into
+    /// a single footprint row.
+    pub fn with_tick_step(mut self, ticks: i64) -> Self {
+        assert!(ticks > 0, "tick step must be positive");
+        self.tick_step = ticks;
+        self
     }
 
     /// Stop after `count` events.
@@ -99,9 +115,16 @@ impl SyntheticFeed {
         let r = self.next_u64();
         let distance = self.anchor_index - self.price_index;
         // Scaled to reach full bias around 45 ticks from the anchor.
-        let bias = (distance as f64 / 45.0).clamp(-0.28, 0.28);
+        // The reversion band scales with the step, so a more volatile market
+        // is allowed a proportionally wider range before being pulled back.
+        let band = (45 * self.tick_step) as f64;
+        let bias = (distance as f64 / band).clamp(-0.28, 0.28);
         let draw = (r >> 11) as f64 / (u64::MAX >> 11) as f64;
-        self.price_index += if draw < 0.5 + bias { 1 } else { -1 };
+        self.price_index += if draw < 0.5 + bias {
+            self.tick_step
+        } else {
+            -self.tick_step
+        };
     }
 
     fn make_trade(&mut self) -> Trade {

@@ -233,6 +233,8 @@ export class MockTransport implements Transport {
       instrument: "sim:BTCUSDT",
       scale: SCALE,
       tick_size: TICK,
+      row_size: TICK,
+      ticks_per_row: 1,
       price_decimals: 2,
       bars: this.bars.map((bar) => ({ ...bar })),
       book: this.makeBook(),

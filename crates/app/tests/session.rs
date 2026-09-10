@@ -523,3 +523,128 @@ fn a_closure_can_serve_as_the_sink() {
     driver.run_to_completion();
     assert!(*seen.borrow() > 0);
 }
+
+// --- Tick aggregation -----------------------------------------------------
+
+#[test]
+fn a_session_aggregates_ticks_into_footprint_rows() {
+    use atas_engine::LadderSpec;
+
+    // A 0.01 instrument with 25 ticks per row: rows are 0.25 apart.
+    let inst = Instrument::spot("BTCUSDT", Venue::Sim, px("0.01"), qty("0.00001"));
+    let mut s = Session::new(
+        inst,
+        SessionConfig {
+            bar_spec: BarSpec::Tick { count: 4 },
+            ticks_per_row: 25,
+            ..config()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(s.ladder(), LadderSpec::new(px("0.01"), 25).unwrap());
+    assert_eq!(s.ladder().row_size(), px("0.25"));
+
+    // Four prints inside one 0.25 row.
+    for (i, price) in ["95000.00", "95000.07", "95000.13", "95000.24"]
+        .iter()
+        .enumerate()
+    {
+        let events = s.on_market_event(&trade_event(price, "1", Side::Buy, i as i64));
+        if i == 3 {
+            let AppEvent::BarClosed(bar) = events
+                .iter()
+                .find(|e| matches!(e, AppEvent::BarClosed(_)))
+                .expect("a bar should have closed")
+            else {
+                unreachable!()
+            };
+            assert_eq!(bar.clusters.len(), 1, "25 ticks collapse into one row");
+            assert_eq!(bar.clusters[0].price, px("95000.00").minor());
+            assert_eq!(bar.clusters[0].ask, qty("4").minor());
+        }
+    }
+}
+
+#[test]
+fn the_snapshot_reports_tick_and_row_size_separately() {
+    let inst = Instrument::spot("BTCUSDT", Venue::Sim, px("0.01"), qty("0.00001"));
+    let mut s = Session::new(
+        inst,
+        SessionConfig {
+            ticks_per_row: 50,
+            ..config()
+        },
+    )
+    .unwrap();
+    s.on_market_event(&trade_event("95000.00", "1", Side::Buy, 1));
+
+    let snap = s.snapshot();
+    assert_eq!(snap.tick_size, px("0.01").minor(), "the order increment");
+    assert_eq!(snap.row_size, px("0.50").minor(), "the footprint row height");
+    assert_eq!(snap.ticks_per_row, 50);
+}
+
+#[test]
+fn changing_the_row_height_rebuckets_from_scratch() {
+    let inst = Instrument::spot("BTCUSDT", Venue::Sim, px("0.01"), qty("0.00001"));
+    let mut s = Session::new(
+        inst,
+        SessionConfig {
+            bar_spec: BarSpec::Tick { count: 2 },
+            ticks_per_row: 1,
+            ..config()
+        },
+    )
+    .unwrap();
+
+    for i in 0..4 {
+        s.on_market_event(&trade_event("95000.00", "1", Side::Buy, i));
+    }
+    assert!(s.bars().count() > 0);
+
+    s.set_ticks_per_row(25).unwrap();
+    assert_eq!(s.ladder().ticks_per_row(), 25);
+    assert_eq!(
+        s.bars().count(),
+        0,
+        "old bars were bucketed at the previous row height"
+    );
+
+    // And new bars use the new height.
+    s.on_market_event(&trade_event("95000.00", "1", Side::Buy, 100));
+    s.on_market_event(&trade_event("95000.20", "1", Side::Buy, 101));
+    assert_eq!(s.bars().next().unwrap().clusters.len(), 1);
+}
+
+#[test]
+fn an_invalid_row_height_is_rejected_without_disturbing_state() {
+    let mut s = session();
+    for i in 0..3 {
+        s.on_market_event(&trade_event("100.00", "5", Side::Buy, i));
+    }
+    let before = s.bars().count();
+
+    assert!(s.set_ticks_per_row(0).is_err());
+    assert_eq!(s.ladder().ticks_per_row(), 1, "unchanged");
+    assert_eq!(s.bars().count(), before, "a rejected change changes nothing");
+}
+
+#[test]
+fn changing_the_bar_rule_keeps_the_row_height() {
+    // Row height is a display choice and a bar rule is a market choice; one
+    // must not silently reset the other.
+    let inst = Instrument::spot("BTCUSDT", Venue::Sim, px("0.01"), qty("0.00001"));
+    let mut s = Session::new(
+        inst,
+        SessionConfig {
+            ticks_per_row: 25,
+            ..config()
+        },
+    )
+    .unwrap();
+
+    s.set_bar_spec(BarSpec::Tick { count: 10 }).unwrap();
+    assert_eq!(s.ladder().ticks_per_row(), 25);
+    assert_eq!(s.ladder().row_size(), px("0.25"));
+}

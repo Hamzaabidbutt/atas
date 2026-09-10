@@ -3,7 +3,7 @@
 use atas_core::{Price, Qty, Side, Trade, Ts};
 use serde::{Deserialize, Serialize};
 
-use crate::cluster::{ClusterLadder, ValueArea};
+use crate::cluster::{ClusterLadder, LadderSpec, ValueArea};
 
 /// A single bar with its cluster ladder.
 ///
@@ -35,8 +35,13 @@ pub struct Bar {
 }
 
 impl Bar {
-    /// Open a new bar on its first trade.
+    /// Open a new bar on its first trade, one ladder row per instrument tick.
     pub fn open(open_ts: Ts, trade: &Trade, tick_size: Price) -> Self {
+        Self::open_with(open_ts, trade, LadderSpec::per_tick(tick_size))
+    }
+
+    /// Open a new bar with an explicit ladder row mapping.
+    pub fn open_with(open_ts: Ts, trade: &Trade, spec: LadderSpec) -> Self {
         let mut bar = Self {
             open_ts,
             close_ts: trade.ts,
@@ -46,7 +51,7 @@ impl Bar {
             close: trade.price,
             volume: Qty::ZERO,
             trades: 0,
-            clusters: ClusterLadder::new(tick_size),
+            clusters: ClusterLadder::with_spec(spec),
             closed: false,
         };
         bar.apply(trade);

@@ -310,8 +310,12 @@ pub struct SnapshotDto {
     pub instrument: String,
     /// Minor units per whole unit.
     pub scale: i64,
-    /// Tick size, minor units.
+    /// The instrument's minimum price increment, minor units.
     pub tick_size: i64,
+    /// Height of one footprint row, minor units. May span several ticks.
+    pub row_size: i64,
+    /// Instrument ticks per footprint row.
+    pub ticks_per_row: u32,
     /// Decimal places to show for prices.
     pub price_decimals: u32,
     /// Completed bars, oldest first, then the forming bar last.

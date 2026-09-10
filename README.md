@@ -36,6 +36,29 @@ A cluster ladder keys cells by exact price; under floating point
 footprint is wrong in a way that is very hard to see. Every price comparison,
 tick-index mapping and ladder row in the system depends on exact equality.
 
+### Row height is not tick size
+
+A footprint row is *not* one instrument tick. BTCUSDT ticks at 0.01, so a bar
+spanning a few dollars would have hundreds of rows — unreadable, and no more
+informative than a heatmap. `LadderSpec` keeps the two apart: `tick_size` is
+the instrument's increment, which order prices quantise to, and
+`ticks_per_row` sets how many of those a footprint row spans.
+
+Conflating them means choosing between an illegible ladder and an instrument
+whose order prices are wrong. In the desktop shell BTCUSDT keeps its real 0.01
+increment — the DOM ladder shows one-cent levels — while the chart aggregates
+25 ticks into each 0.25 row.
+
+Two consequences worth knowing:
+
+- **Range bars measure instrument ticks, not rows.** A bar's height is a
+  property of the market; if range followed the row size, changing a display
+  setting would silently change which bars exist.
+- **Changing the row height clears chart history.** Existing bars were
+  bucketed at the old height, and re-bucketing them would need the ticks they
+  were built from, which bars no longer carry. A replay from stored ticks can
+  rebuild them; the session cannot.
+
 ### Why diagonal imbalance
 
 Footprint imbalance compares the ask volume at a price against the **bid volume
@@ -166,11 +189,6 @@ Known gaps in what is built:
 - Volume and delta bars do not split the trade that crosses their threshold, so
   a bar may overshoot. This matches how most platforms behave and keeps a trade
   atomic in one bar.
-- **Ticks are not aggregated per footprint row.** A footprint row is one tick,
-  so BTCUSDT at its native 0.01 increment puts ~150 rows in a single bar —
-  unreadable, and the renderer correctly degrades to a heatmap. Every real
-  platform offers a "ticks per level" setting; this does not yet, so the shell
-  picks a coarser row size instead.
 - Bar rules and feed rates have to be chosen together. A one-minute bar
   against a feed printing every 25ms is 2,400 trades in one bar, spanning far
   too many price levels to render legibly. There is no guard against

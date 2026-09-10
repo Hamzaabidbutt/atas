@@ -9,7 +9,7 @@
 use std::collections::BTreeSet;
 
 use atas_core::{Price, Qty, Ts};
-use atas_engine::{ClusterLadder, ClusterRow, ValueArea};
+use atas_engine::{ClusterLadder, ClusterRow, LadderSpec, ValueArea};
 
 use crate::traits::BarIndicator;
 
@@ -30,10 +30,19 @@ pub struct SessionProfile {
 }
 
 impl SessionProfile {
-    /// An empty profile for an instrument's tick size.
+    /// An empty profile with one row per instrument tick.
     pub fn new(tick_size: Price) -> Self {
+        Self::with_spec(LadderSpec::per_tick(tick_size))
+    }
+
+    /// An empty profile with an explicit row mapping.
+    ///
+    /// A session profile should use the same row height as the chart it sits
+    /// beside; a POC drawn at a different granularity than the footprint it
+    /// overlays points at a price the ladder does not have.
+    pub fn with_spec(spec: LadderSpec) -> Self {
         Self {
-            ladder: ClusterLadder::new(tick_size),
+            ladder: ClusterLadder::with_spec(spec),
             session_start: None,
             session_end: None,
             bars: 0,
@@ -122,8 +131,7 @@ impl BarIndicator for SessionProfile {
     }
 
     fn reset(&mut self) {
-        let tick = self.ladder.tick_size();
-        *self = Self::new(tick);
+        *self = Self::with_spec(self.ladder.spec());
     }
 }
 
