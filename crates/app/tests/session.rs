@@ -446,3 +446,80 @@ fn a_synthetic_feed_drives_the_whole_session() {
     }
     serde_json::to_string(&snap).unwrap();
 }
+
+// --- Driver ---------------------------------------------------------------
+
+#[test]
+fn the_driver_pumps_a_feed_into_a_session() {
+    use atas_app::{CollectingSink, SessionDriver};
+
+    let inst = instrument();
+    let session = Session::new(inst.clone(), config()).unwrap();
+    let feed = SyntheticFeed::new(&inst, 909, px("100.00")).with_limit(500);
+    let mut driver = SessionDriver::new(session, feed, CollectingSink::default());
+
+    let report = driver.run_to_completion();
+    assert_eq!(report.consumed, 500);
+    assert!(report.emitted > 0);
+    assert!(report.drained);
+    assert_eq!(driver.stats().consumed, 500);
+    assert_eq!(driver.stats().errors, 0);
+    assert!(!driver.sink().events.is_empty());
+    assert!(driver.session().bars().count() > 0);
+}
+
+#[test]
+fn the_pump_budget_is_respected() {
+    // An unbounded pump would never return to the caller on a live feed, and
+    // the UI would freeze while the backlog grew.
+    use atas_app::{CollectingSink, SessionDriver};
+
+    let inst = instrument();
+    let session = Session::new(inst.clone(), config()).unwrap();
+    let feed = SyntheticFeed::new(&inst, 11, px("100.00")).with_limit(1_000);
+    let mut driver = SessionDriver::new(session, feed, CollectingSink::default());
+
+    let first = driver.pump(100);
+    assert_eq!(first.consumed, 100);
+    assert!(first.budget_exhausted);
+    assert!(!first.drained);
+
+    let second = driver.pump(100);
+    assert_eq!(second.consumed, 100);
+    assert_eq!(driver.stats().consumed, 200, "passes must accumulate");
+}
+
+#[test]
+fn pumping_an_exhausted_feed_reports_drained() {
+    use atas_app::{CollectingSink, SessionDriver};
+
+    let inst = instrument();
+    let session = Session::new(inst.clone(), config()).unwrap();
+    let feed = SyntheticFeed::new(&inst, 3, px("100.00")).with_limit(10);
+    let mut driver = SessionDriver::new(session, feed, CollectingSink::default());
+
+    driver.run_to_completion();
+    let after = driver.pump(50);
+    assert_eq!(after.consumed, 0);
+    assert!(after.drained);
+}
+
+#[test]
+fn a_closure_can_serve_as_the_sink() {
+    use atas_app::SessionDriver;
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    let seen = Rc::new(RefCell::new(0usize));
+    let counter = Rc::clone(&seen);
+
+    let inst = instrument();
+    let session = Session::new(inst.clone(), config()).unwrap();
+    let feed = SyntheticFeed::new(&inst, 5, px("100.00")).with_limit(50);
+    let mut driver = SessionDriver::new(session, feed, move |_: &AppEvent| {
+        *counter.borrow_mut() += 1;
+    });
+
+    driver.run_to_completion();
+    assert!(*seen.borrow() > 0);
+}

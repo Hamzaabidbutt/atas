@@ -22,6 +22,11 @@
     </div>
 
     <div class="group" role="group" aria-label="Order entry">
+      <label class="qty">
+        <span class="visually-hidden">Order quantity</span>
+        <input type="text" id="qty" value="1" inputmode="decimal" size="5"
+               aria-label="Order quantity">
+      </label>
       <button type="button" id="buy" class="buy">Buy</button>
       <button type="button" id="sell" class="sell">Sell</button>
       <button type="button" id="flatten">Flatten</button>

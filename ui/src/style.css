@@ -59,7 +59,29 @@ body {
 
 .spacer { flex: 1; }
 
-.group { display: flex; gap: 4px; }
+.group { display: flex; gap: 4px; align-items: center; }
+
+.qty input {
+  width: 62px;
+  padding: 5px 8px;
+  background: #0a0e15;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: right;
+}
+.qty input:focus-visible { outline: 2px solid var(--buy); outline-offset: 1px; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 button {
   padding: 5px 12px;

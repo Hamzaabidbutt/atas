@@ -10,6 +10,11 @@ members = [
     "crates/app",
 ]
 
+# The desktop shell is its own workspace: it needs system GUI libraries that
+# headless environments lack, and as a member it would break `cargo test
+# --workspace` wherever those are missing.
+exclude = ["src-tauri", "ui"]
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

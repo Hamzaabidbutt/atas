@@ -220,6 +220,11 @@ export class MockTransport implements Transport {
   }
 
   async snapshot(): Promise<SnapshotDto> {
+    // Copy the arrays. Handing out the live ones lets the generator's own
+    // push and the consumer's event handler both append the same bar, which
+    // renders it twice. Tauri serialises across the IPC boundary, so the real
+    // transport cannot exhibit this — and the mock must not either, or it
+    // stops being a faithful stand-in.
     const vwap =
       this.vwapVolume > 0
         ? Math.round((this.vwapWeighted / this.vwapVolume) * SCALE)
@@ -229,9 +234,9 @@ export class MockTransport implements Transport {
       scale: SCALE,
       tick_size: TICK,
       price_decimals: 2,
-      bars: this.bars,
+      bars: this.bars.map((bar) => ({ ...bar })),
       book: this.makeBook(),
-      tape: this.tape,
+      tape: [...this.tape],
       indicators: {
         cvd: this.cvd,
         divergence: null,

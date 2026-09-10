@@ -24,6 +24,7 @@ crates/
   trading/   paper matching, positions and PnL
   app/       the session state machine and UI data types
 ui/          TypeScript front end: footprint chart, DOM ladder, tape
+src-tauri/   desktop shell (its own workspace — see below)
 web/         the marketing site, static HTML/CSS/JS
 ```
 
@@ -49,6 +50,14 @@ runs that are the actual tradable signal.
 
 Requires Rust 1.82 or newer, and Node 20+ for the UI.
 
+The desktop shell additionally needs the usual Tauri system libraries. On
+Debian or Ubuntu:
+
+```bash
+sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+                     libjavascriptcoregtk-4.1-dev librsvg2-dev patchelf
+```
+
 ```bash
 cargo test --workspace                                    # 227 tests
 cargo clippy --workspace --all-targets -- -D warnings
@@ -69,6 +78,18 @@ without a desktop build:
 cd ui && npm run dev     # http://localhost:5173
 ```
 
+### The desktop app
+
+`src-tauri` is deliberately **its own Cargo workspace**, not a member of the
+root one. Tauri needs system GUI libraries that a headless CI runner or a
+server checkout will not have; as a workspace member it would break
+`cargo test --workspace` everywhere those are missing.
+
+```bash
+cd ui && npm run build          # the shell serves ui/dist
+cd ../src-tauri && cargo run --release
+```
+
 ## Roadmap
 
 | Component | Status |
@@ -81,10 +102,24 @@ cd ui && npm run dev     # http://localhost:5173
 | `atas-feed` — depth sync + reconnect backoff | **Done**, 19 tests |
 | `atas-feed` — live sockets (`--features live`) | **Compile-verified only** |
 | `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
-| `atas-app` — session state machine, UI DTOs | **Done**, 20 tests |
-| Tauri shell — window, commands, event bridge | Not started |
+| `atas-app` — session state machine, driver, DTOs | **Done**, 26 tests |
+| `src-tauri` — window, commands, event bridge | **Done**, runs |
 | `ui/` — footprint chart, DOM ladder, tape | **Done**, render-tested |
 | UI — dockable multi-pane workspaces | Not started |
+
+### Why the desktop shell is nearly empty
+
+Everything the app does to market data lives in `atas-app` — the session state
+machine and the pump loop, both plain Rust with tests. What is left in
+`src-tauri` is only what genuinely needs a window: holding the session behind
+a lock, running the pump on a background thread, forwarding events to the
+webview, and translating commands. The pump holds the session lock only while
+draining a bounded batch, so UI commands are never queued behind a burst of
+market data.
+
+Order quantities cross that boundary as **decimal strings, not numbers**.
+The Rust side is fixed point precisely so an order size never passes through
+a float, and the IPC boundary is the easiest place to undo that by accident.
 
 ### Why the session layer has no Tauri in it
 
@@ -131,6 +166,15 @@ Known gaps in what is built:
 - Volume and delta bars do not split the trade that crosses their threshold, so
   a bar may overshoot. This matches how most platforms behave and keeps a trade
   atomic in one bar.
+- **Ticks are not aggregated per footprint row.** A footprint row is one tick,
+  so BTCUSDT at its native 0.01 increment puts ~150 rows in a single bar —
+  unreadable, and the renderer correctly degrades to a heatmap. Every real
+  platform offers a "ticks per level" setting; this does not yet, so the shell
+  picks a coarser row size instead.
+- Bar rules and feed rates have to be chosen together. A one-minute bar
+  against a feed printing every 25ms is 2,400 trades in one bar, spanning far
+  too many price levels to render legibly. There is no guard against
+  configuring that combination.
 - **The live socket transport has never been run against a venue.** It was
   written in an environment with no exchange network access, so it is
   compile-verified and built on tested components — the depth handshake

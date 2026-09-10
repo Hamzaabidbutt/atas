@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod driver;
 pub mod dto;
 pub mod session;
 
@@ -16,4 +17,5 @@ pub use dto::{
     BarDto, BookDto, ClusterDto, FillDto, ImbalanceDto, IndicatorsDto, LevelDto, OrderDto,
     PositionDto, SnapshotDto, TapeRowDto, PRICE_SCALE,
 };
+pub use driver::{CollectingSink, DriverStats, EventSink, PumpReport, SessionDriver};
 pub use session::{AppEvent, Session, SessionConfig};

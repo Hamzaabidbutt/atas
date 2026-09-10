@@ -88,13 +88,20 @@ impl SyntheticFeed {
         Price::from_tick_index(index, self.tick_size)
     }
 
-    /// Mean-reverting random walk, so a long run cannot wander to absurd
-    /// prices or to zero.
+    /// Mean-reverting random walk.
+    ///
+    /// One tick per trade, with reversion applied to the *probability* of each
+    /// direction rather than as a separate correction. A larger step or a
+    /// weaker pull lets a bar span so many price levels that its footprint
+    /// cannot be rendered legibly — the ladder degrades to a heatmap — and
+    /// lets a long run wander far from any realistic price.
     fn step_price(&mut self) {
         let r = self.next_u64();
-        let drift = (r % 5) as i64 - 2;
-        let pull = (self.anchor_index - self.price_index) / 64;
-        self.price_index += drift + pull;
+        let distance = self.anchor_index - self.price_index;
+        // Scaled to reach full bias around 45 ticks from the anchor.
+        let bias = (distance as f64 / 45.0).clamp(-0.28, 0.28);
+        let draw = (r >> 11) as f64 / (u64::MAX >> 11) as f64;
+        self.price_index += if draw < 0.5 + bias { 1 } else { -1 };
     }
 
     fn make_trade(&mut self) -> Trade {

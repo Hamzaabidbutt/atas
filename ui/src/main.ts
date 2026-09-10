@@ -123,6 +123,17 @@ class App {
     this.status.render(this.snapshot);
   }
 
+  /** Run a command, surfacing a rejection rather than swallowing it. */
+  private async run(name: string, payload?: unknown): Promise<void> {
+    try {
+      await this.transport.command(name, payload);
+    } catch (error) {
+      // An order the engine refused is exactly what a trader must be told
+      // about; a silent no-op here reads as a filled order that never was.
+      this.flashAlert(`${name} rejected: ${String(error)}`);
+    }
+  }
+
   private flashAlert(text: string): void {
     const element = byId<HTMLElement>("alert");
     element.textContent = text;
@@ -144,15 +155,20 @@ class App {
       this.dirty = true;
     });
 
-    for (const [id, command] of [
-      ["buy", "buy_market"],
-      ["sell", "sell_market"],
-      ["flatten", "flatten"],
-    ] as const) {
-      byId<HTMLButtonElement>(id).addEventListener("click", () => {
-        void this.transport.command(command, { qty: 1 });
-      });
-    }
+    // Quantities cross as decimal strings, never numbers. The Rust side is
+    // fixed point precisely so an order size never passes through a float,
+    // and this boundary is the easiest place to undo that by accident.
+    const size = () => byId<HTMLInputElement>("qty").value.trim() || "1";
+
+    byId<HTMLButtonElement>("buy").addEventListener("click", () => {
+      void this.run("buy_market", { qty: size() });
+    });
+    byId<HTMLButtonElement>("sell").addEventListener("click", () => {
+      void this.run("sell_market", { qty: size() });
+    });
+    byId<HTMLButtonElement>("flatten").addEventListener("click", () => {
+      void this.run("flatten");
+    });
   }
 }
 
