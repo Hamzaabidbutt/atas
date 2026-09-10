@@ -87,6 +87,18 @@ macOS needs Xcode command line tools; Windows needs the WebView2 runtime
 Then, from the repository root:
 
 ```bash
+./scripts/setup.sh
+```
+
+That checks and installs the toolchains and system libraries, pulls
+dependencies, runs the test suite, and offers to launch the app. It is safe to
+re-run — every step checks whether it is already satisfied. Use
+`./scripts/setup.sh --check` to see what is missing without changing anything,
+or `--run` to launch without being asked.
+
+To do it by hand instead:
+
+```bash
 npm install          # the Tauri CLI
 npm run setup        # the UI's own dependencies
 npm run dev          # launches the app with hot reload
