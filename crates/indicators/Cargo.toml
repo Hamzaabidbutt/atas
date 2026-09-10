@@ -1,0 +1,13 @@
+[package]
+name = "atas-indicators"
+description = "Order-flow and classical indicators for the ATAS platform."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+atas-core = { workspace = true }
+atas-engine = { workspace = true }
+serde = { workspace = true }

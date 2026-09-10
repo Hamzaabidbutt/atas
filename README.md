@@ -20,6 +20,7 @@ crates/
   engine/    bar construction and cluster/footprint computation
   store/     segmented append-only tick history
   feed/      venue wire formats, replay and synthetic feeds
+  indicators/ order-flow and classical studies
 ui/          TypeScript front end (not started)
 web/         the marketing site, static HTML/CSS/JS
 ```
@@ -59,8 +60,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 | `atas-engine` — bars and cluster ladders | **Done**, 41 tests |
 | `atas-store` — segmented on-disk tick history | **Done**, 25 tests |
 | `atas-feed` — wire formats, replay, synthetic | **Done**, 46 tests |
+| `atas-indicators` — CVD, VWAP, profiles, scanners | **Done**, 28 tests |
 | `atas-feed` — live WebSocket/REST transport | Not started |
-| Indicators — CVD, VWAP, profile, scanners | Not started |
 | Paper trading — matching, positions, PnL | Not started |
 | Tauri shell — state, commands, event bus | Not started |
 | UI — footprint chart, DOM, tape, workspaces | Not started |

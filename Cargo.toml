@@ -5,6 +5,7 @@ members = [
     "crates/engine",
     "crates/store",
     "crates/feed",
+    "crates/indicators",
 ]
 
 [workspace.package]
@@ -19,6 +20,7 @@ atas-core = { path = "crates/core" }
 atas-engine = { path = "crates/engine" }
 atas-store = { path = "crates/store" }
 atas-feed = { path = "crates/feed" }
+atas-indicators = { path = "crates/indicators" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 
