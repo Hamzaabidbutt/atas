@@ -45,6 +45,25 @@ jobs:
           npm --prefix ui ci
           npm --prefix ui run typecheck
 
+  # The only job that touches a real venue. Kept separate and non-blocking:
+  # it depends on a third party being reachable, so a Binance outage or a
+  # geo-block must not turn the whole build red.
+  live-feed:
+    name: Live Binance connectivity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Connect to Binance and check real data flows
+        run: |
+          cargo test -p atas-feed --features live --test live_binance \
+            -- --ignored --nocapture --test-threads=1
+
   windows:
     name: Windows installer
     runs-on: windows-latest

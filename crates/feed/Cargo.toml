@@ -28,4 +28,5 @@ live = ["dep:tokio", "dep:tokio-tungstenite", "dep:futures-util", "dep:reqwest"]
 
 [dev-dependencies]
 atas-engine = { workspace = true }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 tempfile = "3"

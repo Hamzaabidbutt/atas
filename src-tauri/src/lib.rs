@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 use atas_app::{AppEvent, Session, SessionConfig, SnapshotDto};
 use atas_core::{Instrument, Price, Qty, Side, Venue};
 use atas_engine::BarSpec;
+use atas_feed::live::{binance, LiveOptions};
 use atas_feed::{Feed, SyntheticFeed};
 use atas_trading::{OrderId, OrderRequest};
 use serde::Deserialize;
@@ -24,6 +25,14 @@ use tauri::Emitter;
 
 /// Event name the front end listens on. Must match `transport.ts`.
 const EVENT_CHANNEL: &str = "session://event";
+
+/// Environment variable selecting the data source.
+///
+/// `ATAS_FEED=binance:BTCUSDT` connects to Binance; anything unset or
+/// unrecognised falls back to the offline simulator. An env var rather than a
+/// UI control for now because a venue switch has to tear down and rebuild the
+/// session, and getting that wrong mid-session is worse than a restart.
+const FEED_ENV: &str = "ATAS_FEED";
 
 /// How many market events one pump pass may process.
 ///
@@ -197,14 +206,68 @@ fn set_bar_spec(state: tauri::State<'_, AppState>, spec: BarSpecRequest) -> Resu
 /// Panics if the session cannot be constructed or the Tauri runtime fails to
 /// start — both are unrecoverable at launch, and a window that opens without a
 /// working session would be worse than no window.
+/// Which data source to run against.
+enum FeedChoice {
+    /// The offline simulator.
+    Synthetic,
+    /// Binance live market data for a symbol.
+    Binance(String),
+}
+
+impl FeedChoice {
+    /// Read the choice from the environment.
+    ///
+    /// An unrecognised value falls back to the simulator with a warning rather
+    /// than refusing to start: a typo in an env var should not leave a trader
+    /// with no application at all.
+    fn from_env() -> Self {
+        let Ok(raw) = std::env::var(FEED_ENV) else {
+            return FeedChoice::Synthetic;
+        };
+        let raw = raw.trim();
+
+        if raw.eq_ignore_ascii_case("sim") || raw.eq_ignore_ascii_case("synthetic") {
+            return FeedChoice::Synthetic;
+        }
+        if let Some(symbol) = raw.strip_prefix("binance:").or_else(|| {
+            raw.eq_ignore_ascii_case("binance").then_some("BTCUSDT")
+        }) {
+            let symbol = symbol.trim();
+            if symbol.is_empty() {
+                eprintln!("{FEED_ENV}: no symbol given; using the simulator");
+                return FeedChoice::Synthetic;
+            }
+            return FeedChoice::Binance(symbol.to_uppercase());
+        }
+
+        eprintln!("{FEED_ENV}: unrecognised value {raw:?}; using the simulator");
+        FeedChoice::Synthetic
+    }
+
+    /// The instrument this choice trades.
+    fn instrument(&self) -> Instrument {
+        match self {
+            FeedChoice::Synthetic => Instrument::spot(
+                "BTCUSDT",
+                Venue::Sim,
+                Price::parse("0.01").expect("valid tick size"),
+                Qty::parse("0.00001").expect("valid quantity step"),
+            ),
+            FeedChoice::Binance(symbol) => Instrument::spot(
+                symbol,
+                Venue::Binance,
+                // Binance publishes per-symbol filters over REST; until those
+                // are fetched, BTCUSDT's real increments are the default.
+                Price::parse("0.01").expect("valid tick size"),
+                Qty::parse("0.00001").expect("valid quantity step"),
+            ),
+        }
+    }
+}
+
 pub fn run() {
-    // The instrument's real increment. Order prices quantise to this.
-    let instrument = Instrument::spot(
-        "BTCUSDT",
-        Venue::Sim,
-        Price::parse("0.01").expect("valid tick size"),
-        Qty::parse("0.00001").expect("valid quantity step"),
-    );
+    let choice = FeedChoice::from_env();
+    let instrument = choice.instrument();
 
     // Bar rule matched to the demo feed's rate. A one-minute bar against a
     // feed printing every 25ms is 2,400 trades, which spans so many price
@@ -242,14 +305,34 @@ pub fn run() {
             let handle = app.handle().clone();
             let session = Arc::clone(&session);
 
-            // Until a venue is selected in the UI, the synthetic feed keeps
-            // the app usable offline. Swapping in `atas_feed::live::binance`
-            // is a one-line change here.
-            // A step of one 0.01 tick would move the market a cent at a time,
-            // which is not what BTCUSDT does and collapses a bar into a single
-            // footprint row. Twenty ticks is twenty cents a print.
-            let mut feed = SyntheticFeed::new(&instrument, 0xA7A5, Price::from_units(95_000))
-                .with_tick_step(20);
+            let mut feed: Box<dyn Feed + Send> = match &choice {
+                FeedChoice::Synthetic => {
+                    eprintln!("feed: offline simulator (set {FEED_ENV}=binance:BTCUSDT for live)");
+                    // A step of one 0.01 tick would move the market a cent at
+                    // a time, which is not what BTCUSDT does and collapses a
+                    // bar into a single footprint row. Twenty ticks is twenty
+                    // cents a print.
+                    Box::new(
+                        SyntheticFeed::new(&instrument, 0xA7A5, Price::from_units(95_000))
+                            .with_tick_step(20),
+                    )
+                }
+                FeedChoice::Binance(symbol) => {
+                    eprintln!("feed: Binance live, {symbol}");
+                    // The runtime has to outlive the connection task, and the
+                    // feed runs for the life of the process, so it is leaked
+                    // deliberately rather than dropped at the end of setup —
+                    // dropping it would abort the socket immediately.
+                    let runtime = Box::leak(Box::new(
+                        tokio::runtime::Runtime::new().expect("tokio runtime"),
+                    ));
+                    Box::new(binance::connect(
+                        &instrument,
+                        LiveOptions::default(),
+                        runtime.handle(),
+                    ))
+                }
+            };
 
             std::thread::spawn(move || {
                 loop {
