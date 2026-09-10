@@ -1,0 +1,17 @@
+{
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4"
+  },
+  "name": "atas",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Order-flow analysis and trading platform.",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "ui:dev": "npm --prefix ui run dev",
+    "ui:build": "npm --prefix ui run build",
+    "setup": "npm --prefix ui install"
+  }
+}

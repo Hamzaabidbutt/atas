@@ -69,66 +69,66 @@ populations that never traded against each other. `ClusterLadder::imbalances`
 implements the diagonal form, and `stacked_imbalances` finds the consecutive
 runs that are the actual tradable signal.
 
-## Building
+## Running it
 
-Requires Rust 1.82 or newer, and Node 20+ for the UI.
+### The desktop app
 
-The desktop shell additionally needs the usual Tauri system libraries. On
-Debian or Ubuntu:
+Requires **Rust 1.82+** and **Node 20+**. On Debian or Ubuntu you also need the
+Tauri system libraries:
 
 ```bash
 sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
                      libjavascriptcoregtk-4.1-dev librsvg2-dev patchelf
 ```
 
+macOS needs Xcode command line tools; Windows needs the WebView2 runtime
+(preinstalled on Windows 11) and the MSVC build tools.
+
+Then, from the repository root:
+
 ```bash
-cargo test --workspace                                    # 227 tests
+npm install          # the Tauri CLI
+npm run setup        # the UI's own dependencies
+npm run dev          # launches the app with hot reload
+```
+
+For a standalone binary:
+
+```bash
+npm run build                              # or: npm run build -- --no-bundle
+./src-tauri/target/release/atas-desktop
+```
+
+`npm run build` also produces installers (`.deb`, `.AppImage`, `.dmg`, `.msi`)
+under `src-tauri/target/release/bundle/`. Pass `--no-bundle` to skip those and
+build only the executable, which is much faster.
+
+> **Build through the Tauri CLI, not `cargo build`.** A plain
+> `cargo build --release` inside `src-tauri` produces a binary that still
+> points at the dev server on `localhost:5173` and shows "Could not connect to
+> localhost" when run on its own — cargo's profile is not what decides whether
+> the frontend is embedded; the CLI is.
+
+The app starts on a built-in synthetic feed, so it works with no network and no
+exchange account. Everything on screen is simulated.
+
+### The library crates
+
+```bash
+cargo test --workspace                                    # 271 tests
 cargo clippy --workspace --all-targets -- -D warnings
 
 cd ui
-npm install
-npm run typecheck        # strict TypeScript, no implicit any
-npm run build
+npm run typecheck        # strict TypeScript
 npm run test:render      # needs: npx playwright install chromium
 ```
 
-The UI runs in a plain browser as well as in the desktop shell. Outside Tauri
-it falls back to a seeded mock transport that emits the same DTO shapes the
-Rust session produces, so the renderers can be developed and screenshot-tested
-without a desktop build:
+### Why `src-tauri` is its own workspace
 
-```bash
-cd ui && npm run dev     # http://localhost:5173
-```
-
-### The desktop app
-
-`src-tauri` is deliberately **its own Cargo workspace**, not a member of the
-root one. Tauri needs system GUI libraries that a headless CI runner or a
-server checkout will not have; as a workspace member it would break
-`cargo test --workspace` everywhere those are missing.
-
-```bash
-cd ui && npm run build          # the shell serves ui/dist
-cd ../src-tauri && cargo run --release
-```
-
-## Roadmap
-
-| Component | Status |
-| --- | --- |
-| `atas-core` — prices, instruments, trades, L2 book | **Done**, 40 tests |
-| `atas-engine` — bars and cluster ladders | **Done**, 41 tests |
-| `atas-store` — segmented on-disk tick history | **Done**, 25 tests |
-| `atas-feed` — wire formats, replay, synthetic | **Done**, 46 tests |
-| `atas-indicators` — CVD, VWAP, profiles, scanners | **Done**, 28 tests |
-| `atas-feed` — depth sync + reconnect backoff | **Done**, 19 tests |
-| `atas-feed` — live sockets (`--features live`) | **Compile-verified only** |
-| `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
-| `atas-app` — session state machine, driver, DTOs | **Done**, 26 tests |
-| `src-tauri` — window, commands, event bridge | **Done**, runs |
-| `ui/` — footprint chart, DOM ladder, tape | **Done**, render-tested |
-| UI — dockable multi-pane workspaces | Not started |
+Tauri needs system GUI libraries that a headless CI runner or a server
+checkout will not have. As a member of the root workspace it would break
+`cargo test --workspace` everywhere those are missing, so it stands alone and
+is built through the Tauri CLI instead.
 
 ### Why the desktop shell is nearly empty
 
