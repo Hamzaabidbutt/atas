@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATAS — Order Flow &amp; Volume Analysis Software for Professional Traders</title>
+<meta name="description" content="ATAS is a professional order flow analysis platform: cluster and footprint charts, market profile, smart DOM, smart tape and 240+ indicators for futures, stocks and crypto.">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="ATAS — Order Flow &amp; Volume Analysis Software">
+<meta property="og:description" content="Cluster charts, market profile, smart DOM and 240+ indicators. See the real order flow behind every move.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/img/og-image.svg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="index.html">
+        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="30" height="30" rx="8" fill="#0b0f17" stroke="#1f2939"/>
+          <rect x="7" y="17" width="4" height="8" rx="1.2" fill="#ff4d68"/>
+          <rect x="13" y="11" width="4" height="14" rx="1.2" fill="#21e0a1"/>
+          <rect x="19" y="7" width="4" height="18" rx="1.2" fill="#21e0a1"/>
+          <path d="M7 13.5 15 8l8-4" stroke="#4d8dff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ATAS
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Toggle navigation">
+        <span></span>
+      </button>
+
+      <ul class="nav-links" id="nav-links">
+        <li><a href="features.html">Platform</a></li>
+        <li><a href="features.html#indicators">Indicators</a></li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="index.html#markets">Markets</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a class="btn btn--ghost btn--sm" href="pricing.html">Sign in</a>
+        <a class="btn btn--primary btn--sm" href="download.html">Download free</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="badge-pill"><b>NEW</b> Smart Tape 2.0 — grouped prints &amp; aggression scoring</span>
+        <h1>Stop guessing.<br>Read the <span class="grad">order flow</span>.</h1>
+        <p class="lede">
+          ATAS turns raw exchange data into cluster charts, market profiles and a
+          responsive DOM so you can see exactly where volume traded, who was
+          aggressive, and where liquidity is sitting — before the candle closes.
+        </p>
+        <div class="btn-row">
+          <a class="btn btn--primary" href="download.html">
+            Download for Windows
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          </a>
+          <a class="btn btn--ghost" href="pricing.html">See pricing</a>
+        </div>
+        <p class="hero-note">Free START plan forever · 14-day full-feature trial · No install fee</p>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="terminal-tabs">
+            <span class="on">ES 03-26 · Cluster</span>
+            <span>Profile</span>
+            <span>DOM</span>
+          </div>
+          <span class="terminal-live">LIVE</span>
+        </div>
+        <div class="terminal-body">
+          <div class="chart-pane">
+            <div class="chart-legend">
+              <span><b>Bid×Ask</b> 15s</span>
+              <span class="up">▲ ask</span>
+              <span class="dn">▼ bid</span>
+              <span>POC</span>
+            </div>
+            <canvas id="footprint" aria-label="Animated demonstration of a cluster (footprint) chart"></canvas>
+          </div>
+          <aside class="tape-pane" aria-label="Simulated time and sales tape">
+            <div class="tape-head"><span>Price</span><span>Size</span><span>Time</span></div>
+            <ul class="tape-list" id="tape"></ul>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONNECTORS STRIP ================= -->
+<section class="strip">
+  <div class="wrap strip-inner">
+    <span class="strip-label">Connects to</span>
+    <div class="strip-items">
+      <span>CME Group</span>
+      <span>Eurex</span>
+      <span>Rithmic</span>
+      <span>CQG</span>
+      <span>Interactive Brokers</span>
+      <span>Binance</span>
+      <span>Bybit</span>
+      <span>OKX</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STATS ================= -->
+<section class="section section--tight">
+  <div class="wrap">
+    <ul class="stats reveal">
+      <li class="stat"><b>240+</b><span>Volume &amp; classic indicators</span></li>
+      <li class="stat"><b>6</b><span>Chart types incl. cluster &amp; profile</span></li>
+      <li class="stat"><b>14 days</b><span>Full-feature free trial</span></li>
+      <li class="stat"><b>90+</b><span>Countries using ATAS daily</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ================= FEATURE GRID ================= -->
+<section class="section" id="platform">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">The platform</span>
+      <h2>Everything the tape is telling you</h2>
+      <p class="lede">
+        Price shows you what happened. Order flow shows you how it happened —
+        who paid up, who got absorbed, and where the book thinned out.
+      </p>
+    </div>
+
+    <div class="grid grid--3">
+      <article class="card reveal">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="12" rx="1.5"/></svg>
+        </div>
+        <h3>Cluster (footprint) charts</h3>
+        <p>Every candle broken down into bid × ask volume at each price. Spot absorption, exhaustion and stacked imbalances at a glance.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card-icon card-icon--blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h10"/><path d="M4 9h16"/><path d="M4 13h7"/><path d="M4 17h12"/></svg>
+        </div>
+        <h3>Market Profile &amp; TPO</h3>
+        <p>Full session profiles with value area, POC and TPO structure — see how long price actually spent at every level, not just that it traded there.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card-icon card-icon--sell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h7"/><path d="M14 6h7"/><path d="M3 12h5"/><path d="M16 12h5"/><path d="M3 18h9"/><path d="M15 18h6"/></svg>
+        </div>
+        <h3>Smart DOM</h3>
+        <p>A depth-of-market ladder built for speed: resting liquidity, pulled orders, executed volume and one-click order handling in a single column.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card-icon card-icon--warn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5"/><path d="m8 15 4-6 4 4 4-8"/></svg>
+        </div>
+        <h3>Delta &amp; CVD</h3>
+        <p>Delta, cumulative delta and CVD Pro track aggression bar by bar and session by session, so divergences show up before price confirms them.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </div>
+        <h3>Cluster Search &amp; Big Trades</h3>
+        <p>Scan history and live data for the exact conditions you trade — volume spikes, imbalance stacks, or single prints above your size threshold.</p>
+      </article>
+
+      <article class="card reveal">
+        <div class="card-icon card-icon--blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M3 12h3"/><path d="M18 12h3"/><circle cx="12" cy="12" r="4.5"/></svg>
+        </div>
+        <h3>Smart Tape</h3>
+        <p>Raw prints grouped into real trades, with aggression strength, speed of tape and open interest — the time &amp; sales you can actually read.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SPLIT: CLUSTERS ================= -->
+<section class="section section--alt">
+  <div class="wrap">
+
+    <div class="split reveal">
+      <div>
+        <span class="eyebrow">Cluster analysis</span>
+        <h2>Inside every candle</h2>
+        <p>
+          A cluster chart splits each bar into price levels and shows the volume
+          that traded on the bid versus the ask. Imbalances stack where one side
+          keeps paying up; absorption shows where they stopped being rewarded.
+        </p>
+        <ul class="check-list">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Bid × Ask, delta, volume and trade-count cluster modes</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Automatic POC, value area and stacked-imbalance marking</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Tick, volume, range, delta and Renko bar building</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Heatmap mode for liquidity that never prints on the chart</li>
+        </ul>
+        <div class="btn-row" style="margin-top:18px">
+          <a class="btn btn--soft btn--sm" href="features.html#clusters">Explore cluster charts</a>
+        </div>
+      </div>
+
+      <div class="split-media">
+        <div class="panel">
+          <div class="panel-head"><span>ES 03-26 · Bid × Ask</span><span>15s</span></div>
+          <div class="panel-body">
+            <div class="cluster">
+              <div class="cluster-col">
+                <div class="cluster-cell"><span class="b">142</span><span class="a">96</span></div>
+                <div class="cluster-cell poc"><span class="b">318</span><span class="a">402</span></div>
+                <div class="cluster-cell hot-buy"><span class="b">64</span><span class="a">288</span></div>
+                <div class="cluster-cell"><span class="b">121</span><span class="a">140</span></div>
+                <div class="cluster-cell"><span class="b">88</span><span class="a">73</span></div>
+              </div>
+              <div class="cluster-col">
+                <div class="cluster-cell"><span class="b">96</span><span class="a">104</span></div>
+                <div class="cluster-cell hot-sell"><span class="b">402</span><span class="a">118</span></div>
+                <div class="cluster-cell poc"><span class="b">511</span><span class="a">468</span></div>
+                <div class="cluster-cell"><span class="b">180</span><span class="a">210</span></div>
+                <div class="cluster-cell"><span class="b">54</span><span class="a">61</span></div>
+              </div>
+              <div class="cluster-col">
+                <div class="cluster-cell"><span class="b">73</span><span class="a">91</span></div>
+                <div class="cluster-cell"><span class="b">210</span><span class="a">265</span></div>
+                <div class="cluster-cell hot-buy"><span class="b">88</span><span class="a">399</span></div>
+                <div class="cluster-cell poc"><span class="b">470</span><span class="a">512</span></div>
+                <div class="cluster-cell"><span class="b">132</span><span class="a">118</span></div>
+              </div>
+              <div class="cluster-col">
+                <div class="cluster-cell"><span class="b">58</span><span class="a">62</span></div>
+                <div class="cluster-cell"><span class="b">164</span><span class="a">150</span></div>
+                <div class="cluster-cell poc"><span class="b">388</span><span class="a">421</span></div>
+                <div class="cluster-cell hot-sell"><span class="b">356</span><span class="a">104</span></div>
+                <div class="cluster-cell"><span class="b">92</span><span class="a">86</span></div>
+              </div>
+              <div class="cluster-col">
+                <div class="cluster-cell"><span class="b">41</span><span class="a">77</span></div>
+                <div class="cluster-cell hot-buy"><span class="b">70</span><span class="a">341</span></div>
+                <div class="cluster-cell poc"><span class="b">402</span><span class="a">556</span></div>
+                <div class="cluster-cell"><span class="b">198</span><span class="a">224</span></div>
+                <div class="cluster-cell"><span class="b">63</span><span class="a">80</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="split split--flip reveal">
+      <div>
+        <span class="eyebrow">Execution</span>
+        <h2>A DOM that keeps up with the book</h2>
+        <p>
+          Smart DOM shows resting size, executed volume and how liquidity is
+          changing at each level. Place, modify and cancel orders straight from
+          the ladder, with OCO brackets and position-flattening on one key.
+        </p>
+        <ul class="check-list">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Volume histogram and session profile alongside the ladder</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> One-click orders, brackets, break-even and trailing stops</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Iceberg and spoof detection on changing liquidity</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Hotkeys and layouts that persist across workspaces</li>
+        </ul>
+      </div>
+
+      <div class="split-media">
+        <div class="panel">
+          <div class="panel-head"><span>Smart DOM</span><span>ES 03-26</span></div>
+          <div class="panel-body">
+            <div class="dom">
+              <div class="dom-row"><div class="dom-bar dom-bid"></div><div class="px">5314.50</div><div class="dom-bar dom-ask"><span style="width:82%">412</span></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"></div><div class="px">5314.25</div><div class="dom-bar dom-ask"><span style="width:56%">288</span></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"></div><div class="px">5314.00</div><div class="dom-bar dom-ask"><span style="width:34%">171</span></div></div>
+              <div class="dom-row at"><div class="dom-bar dom-bid"><span style="width:28%">96</span></div><div class="px">5313.75</div><div class="dom-bar dom-ask"><span style="width:21%">104</span></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"><span style="width:47%">241</span></div><div class="px">5313.50</div><div class="dom-bar dom-ask"></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"><span style="width:71%">366</span></div><div class="px">5313.25</div><div class="dom-bar dom-ask"></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"><span style="width:93%">512</span></div><div class="px">5313.00</div><div class="dom-bar dom-ask"></div></div>
+              <div class="dom-row"><div class="dom-bar dom-bid"><span style="width:39%">198</span></div><div class="px">5312.75</div><div class="dom-bar dom-ask"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ================= MARKETS TABS ================= -->
+<section class="section" id="markets">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Markets</span>
+      <h2>One platform, three order books</h2>
+      <p class="lede">Connect the data you already pay for, or start on crypto for free.</p>
+    </div>
+
+    <div data-tabs>
+      <div class="tabs" role="tablist" aria-label="Markets">
+        <button class="tab" role="tab" id="tab-futures" aria-controls="panel-futures" aria-selected="true">Futures</button>
+        <button class="tab" role="tab" id="tab-stocks" aria-controls="panel-stocks" aria-selected="false" tabindex="-1">Stocks</button>
+        <button class="tab" role="tab" id="tab-crypto" aria-controls="panel-crypto" aria-selected="false" tabindex="-1">Crypto</button>
+      </div>
+
+      <div class="tab-panel" id="panel-futures" role="tabpanel" aria-labelledby="tab-futures">
+        <div class="grid grid--3">
+          <article class="card"><h3>CME, CBOT, NYMEX, COMEX</h3><p>ES, NQ, CL, GC, ZN and the rest of the majors with full depth via Rithmic or CQG.</p></article>
+          <article class="card"><h3>Eurex &amp; ICE</h3><p>FDAX, FESX, FGBL and European energy with the same cluster and profile tooling.</p></article>
+          <article class="card"><h3>Broker routing</h3><p>Trade through your existing FCM — ATAS sits on top of your data and execution.</p></article>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-stocks" role="tabpanel" aria-labelledby="tab-stocks" hidden>
+        <div class="grid grid--3">
+          <article class="card"><h3>US equities</h3><p>Level II and time &amp; sales on NASDAQ and NYSE names through supported data providers.</p></article>
+          <article class="card"><h3>Cross-instrument analysis</h3><p>Compare a ticker against its sector or the index future in a linked chart group.</p></article>
+          <article class="card"><h3>Session profiles</h3><p>Overnight, regular and custom sessions profiled separately with their own value areas.</p></article>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-crypto" role="tabpanel" aria-labelledby="tab-crypto" hidden>
+        <div class="grid grid--3">
+          <article class="card"><h3>Spot &amp; perpetuals</h3><p>Binance, Bybit and OKX order books, funding and open interest in one workspace.</p></article>
+          <article class="card"><h3>Free on the START plan</h3><p>Crypto data and basic tooling stay free for as long as you want to use them.</p></article>
+          <article class="card"><h3>24/7 profiles</h3><p>Define your own session boundaries so profiles still mean something in a market that never closes.</p></article>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INDICATORS ================= -->
+<section class="section section--alt" id="indicators">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Indicators</span>
+      <h2>240+ indicators, built for volume</h2>
+      <p class="lede">The classics are all there. These are the ones you came for.</p>
+    </div>
+    <div class="chips reveal">
+      <span class="chip">Cluster Search</span>
+      <span class="chip">Big Trades</span>
+      <span class="chip">Smart Tape</span>
+      <span class="chip">Delta</span>
+      <span class="chip">CVD</span>
+      <span class="chip">CVD Pro</span>
+      <span class="chip">CVD Correlation</span>
+      <span class="chip">Stacked Imbalance</span>
+      <span class="chip">Market Profile &amp; TPO</span>
+      <span class="chip">Dynamic POC</span>
+      <span class="chip">Anchored VWAP</span>
+      <span class="chip">Volume Profile</span>
+      <span class="chip">Open Interest</span>
+      <span class="chip">Speed of Tape</span>
+      <span class="chip">Initiative &amp; Response</span>
+      <span class="chip">Cluster Statistic</span>
+      <span class="chip">Depth of Market</span>
+      <span class="chip">Long/Short Position</span>
+      <span class="chip">Liquidity Heatmap</span>
+      <span class="chip">Footprint Alerts</span>
+    </div>
+    <div class="btn-row center" style="margin-top:28px">
+      <a class="btn btn--ghost btn--sm" href="features.html#indicators">Browse the full library</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STEPS ================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="split">
+      <div class="reveal">
+        <span class="eyebrow">Getting started</span>
+        <h2>Charting in under ten minutes</h2>
+        <p>No install fee, no sales call. Download, connect a data source, and the
+          default workspace is already laid out for order flow.</p>
+      </div>
+      <div class="steps reveal">
+        <div class="step">
+          <h3>Download and install</h3>
+          <p>Windows 10/11, 64-bit. The installer brings its own runtime — nothing else to configure.</p>
+        </div>
+        <div class="step">
+          <h3>Connect your data</h3>
+          <p>Pick a futures feed, an equities provider or a crypto exchange. Crypto works out of the box on the free plan.</p>
+        </div>
+        <div class="step">
+          <h3>Open a cluster chart</h3>
+          <p>Start from a preset workspace, then tune bar type, imbalance thresholds and colouring to how you actually read the tape.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING PREVIEW ================= -->
+<section class="section section--alt" id="pricing">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Pricing</span>
+      <h2>Start free. Upgrade when the tools pay for themselves.</h2>
+      <p class="lede">Four plans, one platform. Annual billing saves 30%, and lifetime licences are available on every paid tier.</p>
+    </div>
+
+    <div class="center" data-billing>
+      <div class="billing-toggle">
+        <button type="button" data-period="monthly" aria-pressed="true">Monthly</button>
+        <button type="button" data-period="yearly" aria-pressed="false">Yearly <span class="save">−30%</span></button>
+      </div>
+    </div>
+
+    <div class="plans" style="margin-top:26px">
+      <article class="plan reveal">
+        <h3>Start</h3>
+        <p class="desc">Explore the platform and trade crypto with the core toolset.</p>
+        <div class="price"><span class="amount" data-monthly="$0" data-yearly="$0">$0</span><span class="per">/mo</span></div>
+        <p class="price-note">Free forever</p>
+        <a class="btn btn--soft btn--block" href="download.html">Download</a>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Crypto market data</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Basic chart types</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Classic indicators</li>
+          <li class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg> Cluster charts</li>
+        </ul>
+      </article>
+
+      <article class="plan reveal">
+        <h3>Plus</h3>
+        <p class="desc">Cluster charts and volume analysis for one connected market.</p>
+        <div class="price"><span class="amount" data-monthly="$24.95" data-yearly="$17.45">$24.95</span><span class="per">/mo</span></div>
+        <p class="price-note">Lifetime licence from €999</p>
+        <a class="btn btn--soft btn--block" href="pricing.html">Start 14-day trial</a>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Everything in Start</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Cluster &amp; profile charts</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Smart DOM</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Delta &amp; CVD</li>
+        </ul>
+      </article>
+
+      <article class="plan plan--featured reveal">
+        <span class="plan-tag">Most popular</span>
+        <h3>Pro</h3>
+        <p class="desc">The full order-flow toolkit for active futures traders.</p>
+        <div class="price"><span class="amount" data-monthly="$69.95" data-yearly="$48.95">$69.95</span><span class="per">/mo</span></div>
+        <p class="price-note">Lifetime licence from €1,799</p>
+        <a class="btn btn--primary btn--block" href="pricing.html">Start 14-day trial</a>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Everything in Plus</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Smart Tape &amp; Big Trades</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Cluster Search &amp; alerts</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Multi-connection workspaces</li>
+        </ul>
+      </article>
+
+      <article class="plan reveal">
+        <h3>Ultra</h3>
+        <p class="desc">Every tool, every connection, priority support.</p>
+        <div class="price"><span class="amount" data-monthly="$89.95" data-yearly="$62.95">$89.95</span><span class="per">/mo</span></div>
+        <p class="price-note">Lifetime licence from €1,999</p>
+        <a class="btn btn--soft btn--block" href="pricing.html">Start 14-day trial</a>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Everything in Pro</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Unlimited connections</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Strategy &amp; API access</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12 5 5L20 6"/></svg> Priority support</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="btn-row center" style="margin-top:28px">
+      <a class="btn btn--ghost btn--sm" href="pricing.html">Compare all features</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TESTIMONIALS ================= -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">Traders</span>
+      <h2>Used on prop desks and kitchen tables alike</h2>
+    </div>
+    <div class="grid grid--3">
+      <figure class="quote reveal">
+        <div class="stars" aria-label="5 out of 5">★★★★★</div>
+        <blockquote><p>“The footprint plus stacked imbalance combo is the only reason I stopped fading trends. It’s obvious on the cluster chart and invisible on a candle.”</p></blockquote>
+        <figcaption class="quote-who"><span class="avatar">DM</span><span><b>D. Moreau</b><span>Futures trader, 6 years</span></span></figcaption>
+      </figure>
+      <figure class="quote reveal">
+        <div class="stars" aria-label="5 out of 5">★★★★★</div>
+        <blockquote><p>“Cluster Search saved me hours of scrolling. I built three scans for my setups and now the platform points at them for me.”</p></blockquote>
+        <figcaption class="quote-who"><span class="avatar">AK</span><span><b>A. Kowalski</b><span>Prop desk, Warsaw</span></span></figcaption>
+      </figure>
+      <figure class="quote reveal">
+        <div class="stars" aria-label="4 out of 5">★★★★☆</div>
+        <blockquote><p>“Steep first week, then you can’t go back. The DOM is quick enough for scalping and the profiles are proper Market Profile, not an approximation.”</p></blockquote>
+        <figcaption class="quote-who"><span class="avatar">RS</span><span><b>R. Sharma</b><span>Crypto perps</span></span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section section--alt" id="faq">
+  <div class="wrap">
+    <div class="section-head center reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions before you download</h2>
+    </div>
+    <div class="faq reveal">
+      <details open>
+        <summary>Is there really a free plan?</summary>
+        <div class="faq-body"><p>Yes. Installing ATAS puts you on the START plan, which is free for as long as you want it. It covers crypto data and a basic set of charts and indicators. Cluster charts and the advanced order-flow tools live on the paid tiers.</p></div>
+      </details>
+      <details>
+        <summary>How does the trial work?</summary>
+        <div class="faq-body"><p>You can activate a 14-day trial of any paid plan at any point, with full functionality unlocked. Buy a plan straight away and you get an extra 14 days on top.</p></div>
+      </details>
+      <details>
+        <summary>Do I need a separate data subscription?</summary>
+        <div class="faq-body"><p>For futures and equities, yes — ATAS connects to your own feed (Rithmic, CQG, Interactive Brokers and others) and exchange fees are billed by the provider. Crypto exchange data is included.</p></div>
+      </details>
+      <details>
+        <summary>Which operating systems are supported?</summary>
+        <div class="faq-body"><p>ATAS is a native Windows application (Windows 10 and 11, 64-bit). Traders on macOS and Linux typically run it on a Windows VPS or a virtual machine.</p></div>
+      </details>
+      <details>
+        <summary>Can I write my own indicators?</summary>
+        <div class="faq-body"><p>Yes. The Pro and Ultra tiers expose the strategy and indicator API so you can build custom studies and automate execution.</p></div>
+      </details>
+      <details>
+        <summary>What happens to my lifetime licence?</summary>
+        <div class="faq-body"><p>A lifetime licence is a one-off payment for permanent access to that tier, including updates within it — there is no recurring subscription afterwards.</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="section section--tight">
+  <div class="wrap">
+    <div class="cta center reveal">
+      <h2>The order flow is already there. Go and look at it.</h2>
+      <p class="lede">Download ATAS, connect a feed, and open your first cluster chart today.</p>
+      <div class="btn-row" style="margin-top:22px">
+        <a class="btn btn--primary" href="download.html">Download free</a>
+        <a class="btn btn--ghost" href="pricing.html">Compare plans</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="logo" href="index.html">
+          <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect x="1" y="1" width="30" height="30" rx="8" fill="#0b0f17" stroke="#1f2939"/>
+            <rect x="7" y="17" width="4" height="8" rx="1.2" fill="#ff4d68"/>
+            <rect x="13" y="11" width="4" height="14" rx="1.2" fill="#21e0a1"/>
+            <rect x="19" y="7" width="4" height="18" rx="1.2" fill="#21e0a1"/>
+            <path d="M7 13.5 15 8l8-4" stroke="#4d8dff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          ATAS
+        </a>
+        <p>Order flow and volume analysis software for futures, stocks and crypto.</p>
+        <div class="socials">
+          <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2 26 26 0 0 0 2 12c0 1.6.1 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.3-1.6.4-3.2.4-4.8s-.1-3.2-.4-4.8ZM10 15V9l5 3-5 3Z"/></svg></a>
+          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 3h3.2l-7 8 8.2 10h-6.4l-5-6.1L4.7 21H1.5l7.5-8.6L1.2 3h6.6l4.5 5.6L17.5 3Zm-1.1 16h1.8L7.7 4.9H5.8L16.4 19Z"/></svg></a>
+          <a href="#" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.7 19c-.2 1-.9 1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9.1-8.2c.4-.3-.1-.5-.6-.2L6.3 12.7 1.5 11.2c-1-.3-1-1 .2-1.5l19-7.3c.9-.3 1.6.2 1.2 1.9Z"/></svg></a>
+          <a href="#" aria-label="Discord"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.3 5.4A16 16 0 0 0 15.4 4l-.3.5a12 12 0 0 1 3.4 1.7 15 15 0 0 0-12.9 0A12 12 0 0 1 9 4.5L8.6 4a16 16 0 0 0-3.9 1.4C2.2 9.1 1.5 12.7 1.8 16.2a16 16 0 0 0 4.9 2.5l1-1.6a10 10 0 0 1-1.6-.8l.4-.3a11.4 11.4 0 0 0 9.8 0l.4.3c-.5.3-1 .6-1.6.8l1 1.6a16 16 0 0 0 4.9-2.5c.4-4-.7-7.6-2.7-10.8ZM8.7 14.2c-1 0-1.7-.9-1.7-2s.8-2 1.7-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.7-.9-1.7-2s.8-2 1.7-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg></a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <ul>
+          <li><a href="features.html#clusters">Cluster charts</a></li>
+          <li><a href="features.html#profile">Market Profile</a></li>
+          <li><a href="features.html#dom">Smart DOM</a></li>
+          <li><a href="features.html#tape">Smart Tape</a></li>
+          <li><a href="features.html#indicators">Indicators</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Markets</h4>
+        <ul>
+          <li><a href="index.html#markets">Futures</a></li>
+          <li><a href="index.html#markets">Stocks</a></li>
+          <li><a href="index.html#markets">Crypto</a></li>
+          <li><a href="download.html#connections">Connections</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="#">Order flow basics</a></li>
+          <li><a href="#">Academy</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Webinars</a></li>
+          <li><a href="#">Help centre</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="pricing.html">Pricing</a></li>
+          <li><a href="download.html">Download</a></li>
+          <li><a href="#">Partners</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> ATAS clone. Demo project.</span>
+      <nav aria-label="Legal">
+        <a href="#">Terms</a>
+        <a href="#">Privacy</a>
+        <a href="#">Risk disclosure</a>
+        <a href="#">Cookies</a>
+      </nav>
+    </div>
+
+    <p class="disclaimer">
+      <strong>Disclaimer.</strong> This site is an independent, non-commercial front-end
+      replica built for design and development practice. It is not affiliated with,
+      endorsed by, or connected to ATAS or its operators, and no product, service or
+      subscription is actually offered here. All prices, figures, quotes and market data
+      shown are illustrative placeholders. Trading futures, stocks and cryptocurrencies
+      involves substantial risk of loss.
+    </p>
+  </div>
+</footer>
+
+<script src="assets/js/main.js" defer></script>
+<script src="assets/js/footprint.js" defer></script>
+</body>
+</html>
