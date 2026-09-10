@@ -1,0 +1,13 @@
+[package]
+name = "atas-trading"
+description = "Paper trading: simulated matching, positions and PnL for the ATAS platform."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+atas-core = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

@@ -52,6 +52,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atas-trading"
+version = "0.1.0"
+dependencies = [
+ "atas-core",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

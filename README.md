@@ -21,6 +21,7 @@ crates/
   store/     segmented append-only tick history
   feed/      venue wire formats, replay and synthetic feeds
   indicators/ order-flow and classical studies
+  trading/   paper matching, positions and PnL
 ui/          TypeScript front end (not started)
 web/         the marketing site, static HTML/CSS/JS
 ```
@@ -62,9 +63,20 @@ cargo clippy --workspace --all-targets -- -D warnings
 | `atas-feed` — wire formats, replay, synthetic | **Done**, 46 tests |
 | `atas-indicators` — CVD, VWAP, profiles, scanners | **Done**, 28 tests |
 | `atas-feed` — live WebSocket/REST transport | Not started |
-| Paper trading — matching, positions, PnL | Not started |
+| `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
 | Tauri shell — state, commands, event bus | Not started |
 | UI — footprint chart, DOM, tape, workspaces | Not started |
+
+### Why paper fills are pessimistic
+
+A paper engine is only useful if it is pessimistic where a real venue would
+be. Market orders walk the book level by level and report the volume-weighted
+result, so size too large for the depth shows up as the slippage it is —
+filling everything at the touch would hide most of the cost of trading size.
+Resting limit orders fill only once the market trades *through* them, never
+merely *at* them: without a real queue-position model, the honest assumption
+is that the trader was behind everyone already queued at that price. That
+understates fills slightly, which is the correct direction to be wrong in.
 
 ### Why the aggressor field is isolated per venue
 
