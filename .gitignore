@@ -4,3 +4,11 @@ node_modules/
 *.log
 .vscode/
 .idea/
+
+# Rust
+/target/
+**/*.rs.bk
+
+# Node / UI
+dist/
+.vite/

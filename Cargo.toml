@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/engine",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT"
+repository = "https://github.com/Hamzaabidbutt/atas"
+
+[workspace.dependencies]
+atas-core = { path = "crates/core" }
+atas-engine = { path = "crates/engine" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+
+# The engine is hot even in dev builds; without this, replaying a few million
+# ticks during development is unusably slow.
+[profile.dev.package."*"]
+opt-level = 2

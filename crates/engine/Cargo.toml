@@ -1,0 +1,12 @@
+[package]
+name = "atas-engine"
+description = "Bar aggregation and cluster/footprint computation for the ATAS order-flow platform."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+atas-core = { workspace = true }
+serde = { workspace = true }
