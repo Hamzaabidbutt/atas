@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/core",
     "crates/engine",
+    "crates/store",
 ]
 
 [workspace.package]
@@ -15,6 +16,7 @@ repository = "https://github.com/Hamzaabidbutt/atas"
 [workspace.dependencies]
 atas-core = { path = "crates/core" }
 atas-engine = { path = "crates/engine" }
+atas-store = { path = "crates/store" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 

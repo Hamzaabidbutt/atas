@@ -28,6 +28,10 @@ pub const NANOS_PER_SEC: i64 = 1_000_000_000;
 impl Ts {
     /// The Unix epoch.
     pub const EPOCH: Ts = Ts(0);
+    /// The largest representable timestamp. Useful as an open range end.
+    pub const MAX: Ts = Ts(i64::MAX);
+    /// The smallest representable timestamp.
+    pub const MIN: Ts = Ts(i64::MIN);
 
     /// Build from nanoseconds since the epoch.
     #[inline]
@@ -36,15 +40,20 @@ impl Ts {
     }
 
     /// Build from milliseconds since the epoch — the form exchanges send.
+    ///
+    /// Saturates rather than overflowing: these values come off the wire, and
+    /// a venue sending a nonsense timestamp must not panic the process or,
+    /// worse, wrap into a valid-looking past date in a release build.
     #[inline]
     pub const fn from_millis(millis: i64) -> Self {
-        Self(millis * NANOS_PER_MILLI)
+        Self(millis.saturating_mul(NANOS_PER_MILLI))
     }
 
-    /// Build from whole seconds since the epoch.
+    /// Build from whole seconds since the epoch. Saturates like
+    /// [`Ts::from_millis`].
     #[inline]
     pub const fn from_secs(secs: i64) -> Self {
-        Self(secs * NANOS_PER_SEC)
+        Self(secs.saturating_mul(NANOS_PER_SEC))
     }
 
     /// Current wall-clock time.
@@ -177,6 +186,17 @@ mod tests {
         let mut v = [Ts::from_secs(3), Ts::from_secs(1), Ts::from_secs(2)];
         v.sort();
         assert_eq!(v, [Ts::from_secs(1), Ts::from_secs(2), Ts::from_secs(3)]);
+    }
+
+    #[test]
+    fn out_of_range_inputs_saturate_instead_of_wrapping() {
+        // A venue sending a garbage timestamp must not panic or, in release,
+        // wrap into a plausible-looking date.
+        assert_eq!(Ts::from_millis(i64::MAX), Ts::MAX);
+        assert_eq!(Ts::from_millis(i64::MIN), Ts::MIN);
+        assert_eq!(Ts::from_secs(i64::MAX), Ts::MAX);
+        // Ordering still holds at the boundary.
+        assert!(Ts::from_millis(1_700_000_000_000) < Ts::MAX);
     }
 
     #[test]
