@@ -12,14 +12,23 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod backoff;
 pub mod binance;
 pub mod bybit;
 pub mod error;
 pub mod json;
+
+/// Live websocket and REST transport. Enable the `live` feature.
+#[cfg(feature = "live")]
+pub mod live;
+
 pub mod replay;
+pub mod sync;
 pub mod synthetic;
 
+pub use backoff::Backoff;
 pub use error::FeedError;
+pub use sync::{DepthSynchroniser, SyncAction, SyncError, SyncState};
 pub use replay::ReplayFeed;
 pub use synthetic::SyntheticFeed;
 

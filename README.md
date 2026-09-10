@@ -78,7 +78,8 @@ cd ui && npm run dev     # http://localhost:5173
 | `atas-store` — segmented on-disk tick history | **Done**, 25 tests |
 | `atas-feed` — wire formats, replay, synthetic | **Done**, 46 tests |
 | `atas-indicators` — CVD, VWAP, profiles, scanners | **Done**, 28 tests |
-| `atas-feed` — live WebSocket/REST transport | Not started |
+| `atas-feed` — depth sync + reconnect backoff | **Done**, 19 tests |
+| `atas-feed` — live sockets (`--features live`) | **Compile-verified only** |
 | `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
 | `atas-app` — session state machine, UI DTOs | **Done**, 20 tests |
 | Tauri shell — window, commands, event bridge | Not started |
@@ -130,11 +131,14 @@ Known gaps in what is built:
 - Volume and delta bars do not split the trade that crosses their threshold, so
   a bar may overshoot. This matches how most platforms behave and keeps a trade
   atomic in one bar.
-- The Binance and Bybit adapters translate wire formats but do not yet open
-  sockets. Transport — connect, resubscribe, sequence-gap recovery, REST
-  backfill — is the remaining part of that crate. It cannot be verified in the
-  environment this was built in, which has no exchange network access, so it is
-  being written after everything that can be tested offline.
+- **The live socket transport has never been run against a venue.** It was
+  written in an environment with no exchange network access, so it is
+  compile-verified and built on tested components — the depth handshake
+  (`sync.rs`) and reconnect pacing (`backoff.rs`) are exhaustively unit-tested
+  pure state machines — but the first real socket it opens will be on your
+  machine. It lives behind `--features live` so the tested parts of the crate
+  build and test without an async runtime or a TLS stack. Historical REST
+  backfill is not implemented at all.
 - Bybit trade ids are UUIDs and do not fit the store's `u64` id field, so they
   are stored as zero rather than truncated into something that could collide.
   Deduplication for that venue keys on `(ts, price, qty)` instead.
