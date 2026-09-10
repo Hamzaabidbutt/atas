@@ -26,6 +26,47 @@ use tauri::Emitter;
 /// Event name the front end listens on. Must match `transport.ts`.
 const EVENT_CHANNEL: &str = "session://event";
 
+/// Append a line to the log file and to stderr.
+///
+/// A Windows GUI application has no console, so `eprintln!` alone means a user
+/// hitting a problem has literally nothing to look at and nothing to send.
+/// The file is the only way most of this is ever diagnosable.
+fn log(message: &str) {
+    eprintln!("{message}");
+    if let Some(path) = log_path() {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(mut file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+        {
+            use std::io::Write;
+            let _ = writeln!(file, "[{}] {message}", stamp());
+        }
+    }
+}
+
+/// Where the log lives, per platform.
+fn log_path() -> Option<std::path::PathBuf> {
+    let base = if cfg!(windows) {
+        std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from)
+    } else {
+        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share"))
+    }?;
+    Some(base.join("ATAS").join("atas.log"))
+}
+
+/// Seconds since the epoch. Deliberately not a calendar format: this crate has
+/// no date-time dependency and a log line only needs to be orderable.
+fn stamp() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
 /// Environment variable selecting the data source.
 ///
 /// `ATAS_FEED=binance:BTCUSDT` connects to Binance; anything unset or
@@ -234,13 +275,13 @@ impl FeedChoice {
         }) {
             let symbol = symbol.trim();
             if symbol.is_empty() {
-                eprintln!("{FEED_ENV}: no symbol given; using the simulator");
+                log(&format!("{FEED_ENV}: no symbol given; using the simulator"));
                 return FeedChoice::Synthetic;
             }
             return FeedChoice::Binance(symbol.to_uppercase());
         }
 
-        eprintln!("{FEED_ENV}: unrecognised value {raw:?}; using the simulator");
+        log(&format!("{FEED_ENV}: unrecognised value {raw:?}; using the simulator"));
         FeedChoice::Synthetic
     }
 
@@ -266,6 +307,11 @@ impl FeedChoice {
 }
 
 pub fn run() {
+    log("--- ATAS starting ---");
+    if let Some(path) = log_path() {
+        eprintln!("log file: {}", path.display());
+    }
+
     let choice = FeedChoice::from_env();
     let instrument = choice.instrument();
 
@@ -307,7 +353,7 @@ pub fn run() {
 
             let mut feed: Box<dyn Feed + Send> = match &choice {
                 FeedChoice::Synthetic => {
-                    eprintln!("feed: offline simulator (set {FEED_ENV}=binance:BTCUSDT for live)");
+                    log(&format!("feed: offline simulator (set {FEED_ENV}=binance:BTCUSDT for live)"));
                     // A step of one 0.01 tick would move the market a cent at
                     // a time, which is not what BTCUSDT does and collapses a
                     // bar into a single footprint row. Twenty ticks is twenty
@@ -318,7 +364,7 @@ pub fn run() {
                     )
                 }
                 FeedChoice::Binance(symbol) => {
-                    eprintln!("feed: Binance live, {symbol}");
+                    log(&format!("feed: Binance live, {symbol}"));
                     // The runtime has to outlive the connection task, and the
                     // feed runs for the life of the process, so it is leaked
                     // deliberately rather than dropped at the end of setup —
@@ -335,6 +381,10 @@ pub fn run() {
             };
 
             std::thread::spawn(move || {
+                let mut errors = 0u32;
+                let mut heartbeat = std::time::Instant::now();
+                let mut seen = 0u64;
+
                 loop {
                     let mut batch: Vec<AppEvent> = Vec::new();
                     {
@@ -345,16 +395,49 @@ pub fn run() {
                         for _ in 0..PUMP_BUDGET {
                             match feed.next_event() {
                                 Ok(Some(event)) => {
+                                    // Connection transitions are the single
+                                    // most useful thing in a bug report, so
+                                    // they go to the log rather than only to
+                                    // a chip in the UI.
+                                    if let atas_core::MarketEvent::Status {
+                                        connected,
+                                        detail,
+                                        ..
+                                    } = &event
+                                    {
+                                        log(&format!(
+                                            "feed {}: {detail}",
+                                            if *connected { "connected" } else { "down" }
+                                        ));
+                                    }
                                     batch.extend(session.on_market_event(&event).iter().cloned());
                                 }
                                 Ok(None) => break,
-                                Err(_) => continue,
+                                Err(e) => {
+                                    errors += 1;
+                                    // Log the first few and then go quiet: a
+                                    // permanently broken feed must not fill
+                                    // the disk with identical lines.
+                                    if errors <= 5 {
+                                        log(&format!("feed error: {e}"));
+                                    }
+                                    continue;
+                                }
                             }
                         }
                     }
 
+                    seen += batch.len() as u64;
                     for event in &batch {
                         let _ = handle.emit(EVENT_CHANNEL, event);
+                    }
+
+                    // A periodic line proves the pump is alive. Its absence in
+                    // a log is as informative as its contents: it separates
+                    // "the app froze" from "the feed delivered nothing".
+                    if heartbeat.elapsed() >= std::time::Duration::from_secs(30) {
+                        log(&format!("pump alive: {seen} events, {errors} errors"));
+                        heartbeat = std::time::Instant::now();
                     }
 
                     // Yield between passes. Without this a quiet feed would

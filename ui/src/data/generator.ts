@@ -260,6 +260,8 @@ export class MockTransport implements Transport {
       orders: [],
       last_price: this.priceIndex * TICK,
       last_ts: this.ts,
+      connected: true,
+      connection_detail: "mock feed",
     };
   }
 

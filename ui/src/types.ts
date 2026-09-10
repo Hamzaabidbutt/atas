@@ -123,6 +123,10 @@ export interface SnapshotDto {
   orders: OrderDto[];
   last_price: Minor | null;
   last_ts: number;
+  /** Whether the feed reports itself connected. */
+  connected: boolean;
+  /** The most recent connection message, empty if there has been none. */
+  connection_detail: string;
 }
 
 /** Tagged union matching `AppEvent`'s serde representation. */

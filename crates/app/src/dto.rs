@@ -334,6 +334,14 @@ pub struct SnapshotDto {
     pub last_price: Option<i64>,
     /// Timestamp of the most recent event, nanoseconds.
     pub last_ts: i64,
+    /// Whether the feed currently reports itself connected.
+    ///
+    /// In the snapshot rather than only in events because the connection can
+    /// fail before the UI has subscribed — which is precisely when a feed
+    /// that cannot reach its venue does fail — and those events are then lost.
+    pub connected: bool,
+    /// The most recent connection message, empty if there has been none.
+    pub connection_detail: String,
 }
 
 /// Convert a timestamp for the UI.

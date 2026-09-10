@@ -152,6 +152,34 @@ build only the executable, which is much faster.
 The app starts on a built-in synthetic feed, so it works with no network and no
 exchange account. Everything on screen is simulated.
 
+### Live market data
+
+```powershell
+$env:ATAS_FEED = "binance:BTCUSDT"    # any Binance symbol
+```
+```bash
+ATAS_FEED=binance:BTCUSDT atas-desktop
+```
+
+Unset it, or set it to `sim`, for the simulator. Market data only — this
+client never places an order on Binance and needs no API key.
+
+### When something goes wrong
+
+The app writes a log:
+
+| Platform | Path |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\ATAS\atas.log` |
+| Linux, macOS | `~/.local/share/ATAS/atas.log` |
+
+It records the feed chosen, every connection transition with its reason, and
+a heartbeat every 30s. The heartbeat's absence is as informative as its
+contents: it separates "the app froze" from "the feed delivered nothing".
+
+An empty chart names the instrument and the connection error on the chart
+itself, so a blank screen is never unexplained.
+
 ### The library crates
 
 ```bash

@@ -33,6 +33,8 @@ export class FootprintChart {
   private options: FootprintOptions;
   /** How many columns the viewport is scrolled back from the newest bar. */
   private scrollBack = 0;
+  /** Explanation shown under an empty chart. */
+  private emptyHint: string | undefined;
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -67,7 +69,7 @@ export class FootprintChart {
     const plotWidth = width - PADDING.left - PADDING.right;
     const plotHeight = height - PADDING.top - PADDING.bottom;
     if (plotWidth <= 0 || plotHeight <= 0 || snapshot.bars.length === 0) {
-      this.drawEmpty(ctx, width, height);
+      this.drawEmpty(ctx, width, height, snapshot);
       return;
     }
 
@@ -118,16 +120,39 @@ export class FootprintChart {
     this.drawHeader(ctx, snapshot, visible, width);
   }
 
+  /**
+   * Explain an empty chart rather than just stating it.
+   *
+   * "waiting for data" is what a working app shows for its first second and
+   * what a completely broken one shows for ever. Naming the instrument and
+   * the status turns an indefinite blank screen into something diagnosable.
+   */
   private drawEmpty(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
+    snapshot: SnapshotDto,
   ): void {
-    ctx.fillStyle = theme.muted;
-    ctx.font = mono;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("waiting for data", width / 2, height / 2);
+
+    ctx.fillStyle = theme.textDim;
+    ctx.font = mono;
+    ctx.fillText("No market data yet", width / 2, height / 2 - 26);
+
+    ctx.fillStyle = theme.muted;
+    ctx.font = monoSmall;
+    ctx.fillText(`source: ${snapshot.instrument}`, width / 2, height / 2);
+    ctx.fillText(
+      this.emptyHint ?? "waiting for the first trade…",
+      width / 2,
+      height / 2 + 18,
+    );
+  }
+
+  /** Set the line shown under an empty chart, e.g. a connection error. */
+  setEmptyHint(hint: string | undefined): void {
+    this.emptyHint = hint;
   }
 
   private drawGrid(

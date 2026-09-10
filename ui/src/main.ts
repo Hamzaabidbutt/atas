@@ -36,6 +36,9 @@ class App {
   async start(): Promise<void> {
     this.snapshot = await this.transport.snapshot();
     this.tape = [...this.snapshot.tape];
+    // The snapshot carries connection state because a feed that cannot reach
+    // its venue fails before this code runs, and those events are lost.
+    this.applyConnection(this.snapshot.connected, this.snapshot.connection_detail);
     this.dirty = true;
 
     this.transport.subscribe((event) => this.apply(event));
@@ -106,10 +109,10 @@ class App {
         this.flashAlert(`Scanner hit · ${event.stacks} stacked imbalance runs`);
         break;
       case "connection_changed":
-        byId<HTMLElement>("connection").textContent = event.connected
-          ? "connected"
-          : `disconnected — ${event.detail}`;
-        byId<HTMLElement>("connection").classList.toggle("down", !event.connected);
+        this.applyConnection(event.connected, event.detail);
+        if (!event.connected) {
+          this.flashAlert(`Feed disconnected: ${event.detail}`);
+        }
         break;
     }
     this.dirty = true;
@@ -121,6 +124,25 @@ class App {
     this.ladder.render(this.snapshot);
     this.tapePane.render(this.snapshot, this.tape);
     this.status.render(this.snapshot);
+  }
+
+  /** Reflect feed connection state in the chip and on an empty chart. */
+  private applyConnection(connected: boolean, detail: string): void {
+    const chip = byId<HTMLElement>("connection");
+    if (connected) {
+      chip.textContent = "connected";
+    } else if (detail) {
+      chip.textContent = `disconnected — ${detail}`;
+    } else {
+      chip.textContent = "connecting…";
+    }
+    chip.classList.toggle("down", !connected && detail !== "");
+
+    // A feed that cannot connect is the most likely reason for an empty
+    // chart, so say so on the chart rather than only in a chip the eye skips.
+    this.chart.setEmptyHint(
+      connected || !detail ? undefined : `connection failed: ${detail}`,
+    );
   }
 
   /** Run a command, surfacing a rejection rather than swallowing it. */

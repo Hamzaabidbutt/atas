@@ -152,6 +152,7 @@ pub struct Session {
     events: Vec<AppEvent>,
     last_ts: Ts,
     connected: bool,
+    connection_detail: String,
 }
 
 impl Session {
@@ -177,6 +178,7 @@ impl Session {
             events: Vec::new(),
             last_ts: Ts::EPOCH,
             connected: false,
+            connection_detail: String::new(),
             instrument,
             config,
         })
@@ -222,6 +224,11 @@ impl Session {
         self.connected
     }
 
+    /// The most recent connection message.
+    pub fn connection_detail(&self) -> &str {
+        &self.connection_detail
+    }
+
     /// Feed one normalised market event in, returning what the UI should do.
     ///
     /// The returned slice is valid until the next call.
@@ -264,6 +271,7 @@ impl Session {
                 connected, detail, ..
             } => {
                 self.connected = *connected;
+                self.connection_detail = detail.clone();
                 if !connected {
                     // Stale depth must never be shown as live.
                     self.book.clear();
@@ -422,6 +430,8 @@ impl Session {
             orders: self.engine.working_orders().map(OrderDto::from).collect(),
             last_price: self.engine.last_price().map(|p| p.minor()),
             last_ts: self.last_ts.nanos(),
+            connected: self.connected,
+            connection_detail: self.connection_detail.clone(),
         }
     }
 
