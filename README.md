@@ -23,7 +23,7 @@ crates/
   indicators/ order-flow and classical studies
   trading/   paper matching, positions and PnL
   app/       the session state machine and UI data types
-ui/          TypeScript front end (not started)
+ui/          TypeScript front end: footprint chart, DOM ladder, tape
 web/         the marketing site, static HTML/CSS/JS
 ```
 
@@ -47,11 +47,26 @@ runs that are the actual tradable signal.
 
 ## Building
 
-Requires Rust 1.82 or newer.
+Requires Rust 1.82 or newer, and Node 20+ for the UI.
 
 ```bash
-cargo test --workspace        # unit and integration tests
+cargo test --workspace                                    # 227 tests
 cargo clippy --workspace --all-targets -- -D warnings
+
+cd ui
+npm install
+npm run typecheck        # strict TypeScript, no implicit any
+npm run build
+npm run test:render      # needs: npx playwright install chromium
+```
+
+The UI runs in a plain browser as well as in the desktop shell. Outside Tauri
+it falls back to a seeded mock transport that emits the same DTO shapes the
+Rust session produces, so the renderers can be developed and screenshot-tested
+without a desktop build:
+
+```bash
+cd ui && npm run dev     # http://localhost:5173
 ```
 
 ## Roadmap
@@ -67,7 +82,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 | `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
 | `atas-app` — session state machine, UI DTOs | **Done**, 20 tests |
 | Tauri shell — window, commands, event bridge | Not started |
-| UI — footprint chart, DOM, tape, workspaces | Not started |
+| `ui/` — footprint chart, DOM ladder, tape | **Done**, render-tested |
+| UI — dockable multi-pane workspaces | Not started |
 
 ### Why the session layer has no Tauri in it
 

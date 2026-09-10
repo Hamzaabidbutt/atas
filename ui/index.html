@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATAS</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <header class="toolbar">
+    <span class="brand">ATAS</span>
+    <span class="chip" id="source">—</span>
+    <span class="chip" id="connection">connected</span>
+
+    <div class="spacer"></div>
+
+    <div class="group" role="group" aria-label="Chart navigation">
+      <button type="button" id="scroll-back" title="Scroll back">&larr;</button>
+      <button type="button" id="scroll-forward" title="Scroll forward">&rarr;</button>
+      <button type="button" id="scroll-live" title="Jump to the newest bar">Live</button>
+    </div>
+
+    <div class="group" role="group" aria-label="Order entry">
+      <button type="button" id="buy" class="buy">Buy</button>
+      <button type="button" id="sell" class="sell">Sell</button>
+      <button type="button" id="flatten">Flatten</button>
+    </div>
+  </header>
+
+  <div class="stats" id="status"></div>
+
+  <main class="workspace">
+    <section class="pane pane--chart">
+      <canvas id="chart" aria-label="Cluster footprint chart"></canvas>
+    </section>
+    <aside class="side">
+      <section class="pane">
+        <h2>Depth</h2>
+        <canvas id="dom" aria-label="Depth of market ladder"></canvas>
+      </section>
+      <section class="pane">
+        <h2>Time &amp; Sales</h2>
+        <canvas id="tape" aria-label="Time and sales"></canvas>
+      </section>
+    </aside>
+  </main>
+
+  <div class="alert" id="alert" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
