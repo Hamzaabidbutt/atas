@@ -93,7 +93,17 @@ Then, from the repository root:
 ./scripts/setup.sh            # Linux and macOS
 ```
 ```powershell
-.\scripts\setup.ps1          # Windows PowerShell
+.\scripts\setup.cmd          # Windows
+```
+
+Windows blocks `.ps1` files by default, so running `setup.ps1` directly fails
+with *"running scripts is disabled on this system"* before a line of it
+executes. `setup.cmd` is a wrapper that bypasses the policy for that one
+invocation and changes no machine settings. To call the PowerShell script
+directly instead:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
 That checks and installs the toolchains and system libraries, pulls
