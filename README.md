@@ -81,13 +81,19 @@ sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
                      libjavascriptcoregtk-4.1-dev librsvg2-dev patchelf
 ```
 
-macOS needs Xcode command line tools; Windows needs the WebView2 runtime
-(preinstalled on Windows 11) and the MSVC build tools.
+macOS needs Xcode command line tools.
+
+**Windows** needs Git, Rust, Node, the MSVC build tools (Rust links with MSVC
+on Windows) and the WebView2 runtime, which is preinstalled on Windows 11.
+`scripts/setup.ps1` installs all of them through winget.
 
 Then, from the repository root:
 
 ```bash
-./scripts/setup.sh
+./scripts/setup.sh            # Linux and macOS
+```
+```powershell
+.\scripts\setup.ps1          # Windows PowerShell
 ```
 
 That checks and installs the toolchains and system libraries, pulls
