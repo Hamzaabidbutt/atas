@@ -1,59 +1,84 @@
-# atas.net — front-end clone
+# ATAS
 
-A static, dependency-free replica of an order-flow trading platform's marketing
-site, built as a design/development exercise.
+An order-flow analysis and trading platform: cluster (footprint) charts,
+market profile, a depth-of-market ladder and paper trading, built as a native
+desktop application.
 
-> **Not affiliated with ATAS.** This is an independent, non-commercial front-end
-> replica for practice. No product, service or subscription is offered here, and
-> every price, statistic, quote and market figure on the site is an illustrative
-> placeholder. The real site is at atas.net.
+**Status: early. The core engine is built and tested; the application shell and
+UI are not yet.** See [Roadmap](#roadmap) for exactly what exists today.
 
-## Pages
+## Architecture
 
-| File | Contents |
-| --- | --- |
-| `index.html` | Hero with a live-animated cluster chart and tape, feature grid, cluster/DOM deep dives, markets tabs, indicator library, pricing preview, testimonials, FAQ |
-| `features.html` | Platform tour: cluster charts, Market Profile & TPO, Smart DOM, Smart Tape / Big Trades / Cluster Search, indicator library, automation |
-| `pricing.html` | Four plans with a monthly/yearly toggle, full feature comparison table, billing FAQ |
-| `download.html` | Install steps, system requirements, data connections, post-install FAQ |
-
-## Stack
-
-Plain HTML, CSS and vanilla JavaScript — no build step, no framework, no runtime
-dependencies. Fonts come from Google Fonts; everything else is local.
+Rust core, TypeScript UI, packaged with Tauri. The split is deliberate: tick
+ingestion, storage and cluster aggregation are latency- and allocation-
+sensitive and live in Rust; the chart and workspace layer is a UI problem and
+lives in TypeScript against a canvas.
 
 ```
-assets/
-  css/styles.css      design tokens + all components
-  js/main.js          nav, scroll reveal, tabs, pricing toggle, animated tape
-  js/footprint.js     canvas cluster/footprint chart in the hero
-  img/                logo, favicon, social image (SVG)
+crates/
+  core/      domain vocabulary: fixed-point Price/Qty, Instrument, Trade, OrderBook
+  engine/    bar construction and cluster/footprint computation
+ui/          TypeScript front end (not started)
+web/         the marketing site, static HTML/CSS/JS
 ```
 
-### The hero chart
+### Why fixed point
 
-`assets/js/footprint.js` renders a synthetic footprint chart on a `<canvas>`:
-candles split into per-price bid × ask cells, with imbalance shading, per-bar
-POC outlining and a delta footer. Bars are generated from a seeded PRNG so the
-chart looks the same on every load, and it scrolls a new bar in roughly every
-four seconds. It pauses when the tab is hidden or the canvas scrolls out of
-view, and does not animate at all under `prefers-reduced-motion`.
+Prices and quantities are `i64` minor units at 8 decimal places, never floats.
+A cluster ladder keys cells by exact price; under floating point
+`0.1 + 0.2 != 0.3`, so a single price level silently becomes two and the
+footprint is wrong in a way that is very hard to see. Every price comparison,
+tick-index mapping and ladder row in the system depends on exact equality.
 
-## Running it
+### Why diagonal imbalance
 
-Any static server works:
+Footprint imbalance compares the ask volume at a price against the **bid volume
+one tick below**, not against the bid on the same row. Those are the two sides
+of the same auction; buyers lifting the offer at 100.25 were being filled by
+sellers resting at 100.00. Comparing bid and ask on one row measures two
+populations that never traded against each other. `ClusterLadder::imbalances`
+implements the diagonal form, and `stacked_imbalances` finds the consecutive
+runs that are the actual tradable signal.
+
+## Building
+
+Requires Rust 1.82 or newer.
 
 ```bash
-python3 -m http.server 8000
-# then open http://localhost:8000
+cargo test --workspace        # unit and integration tests
+cargo clippy --workspace --all-targets -- -D warnings
 ```
 
-Or open `index.html` directly in a browser.
+## Roadmap
 
-## Notes
+| Component | Status |
+| --- | --- |
+| `atas-core` — prices, instruments, trades, L2 book | **Done**, 39 tests |
+| `atas-engine` — bars and cluster ladders | **Done**, 41 tests |
+| Tick storage — segmented on-disk history | Not started |
+| Feed adapters — Binance, Bybit, replay, synthetic | Not started |
+| Indicators — CVD, VWAP, profile, scanners | Not started |
+| Paper trading — matching, positions, PnL | Not started |
+| Tauri shell — state, commands, event bus | Not started |
+| UI — footprint chart, DOM, tape, workspaces | Not started |
 
-- Responsive down to ~360px; tables and the cluster grid scroll horizontally
-  rather than breaking the layout.
-- Dark theme only, matching the source design.
-- Tabs and the mobile nav are keyboard-navigable; `prefers-reduced-motion` is
-  respected throughout.
+Known gaps in what is built:
+
+- Renko bars are not implemented. Splitting a multi-brick move's cluster ladder
+  across bricks correctly needs ladder range-extraction that does not exist
+  yet, and shipping an approximation would put wrong volume at wrong prices.
+- Volume and delta bars do not split the trade that crosses their threshold, so
+  a bar may overshoot. This matches how most platforms behave and keeps a trade
+  atomic in one bar.
+
+## The marketing site
+
+`web/` holds a static replica of an order-flow platform's marketing site,
+built earlier as a design exercise. Serve it with any static server:
+
+```bash
+cd web && python3 -m http.server 8000
+```
+
+It is an independent, non-commercial replica, not affiliated with ATAS, and
+every price, statistic and quote on it is an illustrative placeholder.
