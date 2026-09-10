@@ -19,9 +19,6 @@ use crate::binance::{self as wire, agg_trade_stream, depth_stream};
 use crate::live::{ChannelFeed, LiveError, LiveOptions, ShutdownGuard};
 use crate::sync::{DepthSynchroniser, SyncAction};
 
-const WS_BASE: &str = "wss://stream.binance.com:9443/stream?streams=";
-const REST_BASE: &str = "https://api.binance.com";
-
 /// Connect to Binance for one instrument.
 ///
 /// Spawns a background task on the supplied runtime handle and returns a feed
@@ -86,7 +83,8 @@ async fn session(
 ) -> Result<(), LiveError> {
     let lower = symbol.to_lowercase();
     let url = format!(
-        "{WS_BASE}{}/{}",
+        "{}{}/{}",
+        options.ws_base,
         agg_trade_stream(&lower),
         depth_stream(&lower)
     );
@@ -207,7 +205,8 @@ async fn fetch_and_apply_snapshot(
     sync: &mut DepthSynchroniser<MarketEvent>,
 ) -> Result<(), LiveError> {
     let url = format!(
-        "{REST_BASE}/api/v3/depth?symbol={}&limit={}",
+        "{}/api/v3/depth?symbol={}&limit={}",
+        options.rest_base,
         symbol.to_uppercase(),
         options.snapshot_depth
     );

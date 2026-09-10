@@ -24,9 +24,34 @@ use crate::Feed;
 pub mod binance;
 pub mod bybit;
 
+/// Binance's market-data-only websocket host.
+///
+/// Deliberately not `stream.binance.com`. The trading hosts are geo-restricted
+/// and answer 451 from several jurisdictions including the United States,
+/// which is where most cloud and CI networks live. The `.vision` hosts serve
+/// the same public market data with no trading capability attached, so they
+/// are both the correct endpoint for a client that never places an order here
+/// and the one that is actually reachable.
+pub const BINANCE_WS_DATA: &str = "wss://data-stream.binance.vision/stream?streams=";
+
+/// Binance's market-data-only REST host. See [`BINANCE_WS_DATA`].
+pub const BINANCE_REST_DATA: &str = "https://data-api.binance.vision";
+
+/// Binance's trading websocket host. Geo-restricted; use only where the
+/// client genuinely needs the trading endpoints.
+pub const BINANCE_WS_TRADE: &str = "wss://stream.binance.com:9443/stream?streams=";
+
+/// Binance's trading REST host. Geo-restricted; see [`BINANCE_WS_TRADE`].
+pub const BINANCE_REST_TRADE: &str = "https://api.binance.com";
+
 /// Connection tuning shared by the venue drivers.
 #[derive(Debug, Clone)]
 pub struct LiveOptions {
+    /// Websocket base URL, ending in whatever prefix the venue expects before
+    /// the stream list.
+    pub ws_base: String,
+    /// REST base URL, with no trailing slash.
+    pub rest_base: String,
     /// Depth levels to request in the REST snapshot.
     pub snapshot_depth: u32,
     /// How long to wait for a websocket message before treating the
@@ -45,6 +70,8 @@ pub struct LiveOptions {
 impl Default for LiveOptions {
     fn default() -> Self {
         Self {
+            ws_base: BINANCE_WS_DATA.to_string(),
+            rest_base: BINANCE_REST_DATA.to_string(),
             snapshot_depth: 1_000,
             read_timeout: std::time::Duration::from_secs(30),
             channel_capacity: 65_536,

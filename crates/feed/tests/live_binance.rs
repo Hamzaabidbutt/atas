@@ -13,10 +13,13 @@
 //! cargo test -p atas-feed --features live -- --ignored --nocapture
 //! ```
 //!
-//! Binance geo-restricts `api.binance.com` from some regions, returning HTTP
-//! 451. If that happens the trade stream still works; it is the REST depth
-//! snapshot that fails, so the test reports which parts succeeded rather than
-//! failing outright on something outside its control.
+//! These connect to Binance's `.vision` market-data hosts rather than the
+//! trading ones. The trading hosts answer 451 Unavailable For Legal Reasons
+//! from several jurisdictions — including the United States, where most CI
+//! networks live — and that applies to the websocket, not just REST. The
+//! market-data hosts carry the same public data with no trading capability,
+//! which is the correct endpoint for this client anyway since it never places
+//! an order on Binance.
 
 #![cfg(feature = "live")]
 
@@ -116,8 +119,8 @@ fn connects_and_receives_real_trades() {
 
     if seen.snapshots == 0 {
         println!(
-            "NOTE: no REST depth snapshot. Binance geo-restricts api.binance.com \
-             from some regions (HTTP 451); the trade stream is unaffected."
+            "NOTE: no REST depth snapshot, though trades arrived. The depth \
+             handshake is the part that did not complete."
         );
     } else {
         assert!(

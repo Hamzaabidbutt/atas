@@ -18,6 +18,8 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::bybit::{self as wire, orderbook_topic, trade_topic};
 use crate::live::{ChannelFeed, LiveError, LiveOptions, ShutdownGuard};
 
+/// Bybit's public spot stream. Not geo-restricted the way Binance's trading
+/// hosts are, so this stays a constant rather than an option.
 const WS_SPOT: &str = "wss://stream.bybit.com/v5/public/spot";
 
 /// Order book depth to subscribe to. Bybit publishes fixed tiers, so this is
