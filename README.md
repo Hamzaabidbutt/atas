@@ -69,7 +69,19 @@ populations that never traded against each other. `ClusterLadder::imbalances`
 implements the diagonal form, and `stacked_imbalances` finds the consecutive
 runs that are the actual tradable signal.
 
-## Running it
+## Getting a build
+
+The [Build workflow](../../actions/workflows/build.yml) compiles a Windows
+installer on every push. To install without a toolchain, open the most recent
+successful run, download the **atas-windows** artifact, unzip it and run the
+`.msi` or the NSIS `.exe`.
+
+The binaries are unsigned, so SmartScreen will warn on first launch: choose
+**More info → Run anyway**.
+
+Everything below is for building from source instead.
+
+## Building from source
 
 ### The desktop app
 
