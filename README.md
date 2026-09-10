@@ -22,6 +22,7 @@ crates/
   feed/      venue wire formats, replay and synthetic feeds
   indicators/ order-flow and classical studies
   trading/   paper matching, positions and PnL
+  app/       the session state machine and UI data types
 ui/          TypeScript front end (not started)
 web/         the marketing site, static HTML/CSS/JS
 ```
@@ -64,8 +65,26 @@ cargo clippy --workspace --all-targets -- -D warnings
 | `atas-indicators` — CVD, VWAP, profiles, scanners | **Done**, 28 tests |
 | `atas-feed` — live WebSocket/REST transport | Not started |
 | `atas-trading` — paper matching, positions, PnL | **Done**, 27 tests |
-| Tauri shell — state, commands, event bus | Not started |
+| `atas-app` — session state machine, UI DTOs | **Done**, 20 tests |
+| Tauri shell — window, commands, event bridge | Not started |
 | UI — footprint chart, DOM, tape, workspaces | Not started |
+
+### Why the session layer has no Tauri in it
+
+`atas-app` holds everything the desktop app does to market data, in plain
+Rust with no window toolkit anywhere near it. The Tauri shell is a transport:
+it hands market events to a `Session` and forwards the `AppEvent`s that come
+back. Logic that can only be exercised by launching a window is logic that
+does not get tested — this crate's 20 tests drive the entire platform end to
+end, from a synthetic feed through aggregation, indicators and paper fills to
+a serialised frame, with no display involved.
+
+Prices cross into the UI as fixed-point *minor units*, never decimals.
+JavaScript numbers are IEEE doubles, exact for integers below 2^53 (~9.0e15);
+minor units at 8 decimal places put a six-figure price near 9.5e12, four
+orders of magnitude inside that bound. Sending `95000.01` as a JSON decimal
+would hand the UI a float to compare against — reintroducing at the boundary
+the exact problem fixed point exists to avoid.
 
 ### Why paper fills are pessimistic
 

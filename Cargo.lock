@@ -3,6 +3,19 @@
 version = 3
 
 [[package]]
+name = "atas-app"
+version = "0.1.0"
+dependencies = [
+ "atas-core",
+ "atas-engine",
+ "atas-feed",
+ "atas-indicators",
+ "atas-trading",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "atas-core"
 version = "0.1.0"
 dependencies = [

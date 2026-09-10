@@ -1,0 +1,19 @@
+[package]
+name = "atas-app"
+description = "Application session: wires feeds, aggregation, indicators and trading into one state machine."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+atas-core = { workspace = true }
+atas-engine = { workspace = true }
+atas-indicators = { workspace = true }
+atas-trading = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+atas-feed = { workspace = true }
+serde_json = "1"
