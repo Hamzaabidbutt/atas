@@ -21,6 +21,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "atas-feed"
+version = "0.1.0"
+dependencies = [
+ "atas-core",
+ "atas-engine",
+ "atas-store",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "atas-store"
 version = "0.1.0"
 dependencies = [

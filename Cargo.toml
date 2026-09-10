@@ -4,6 +4,7 @@ members = [
     "crates/core",
     "crates/engine",
     "crates/store",
+    "crates/feed",
 ]
 
 [workspace.package]
@@ -17,6 +18,7 @@ repository = "https://github.com/Hamzaabidbutt/atas"
 atas-core = { path = "crates/core" }
 atas-engine = { path = "crates/engine" }
 atas-store = { path = "crates/store" }
+atas-feed = { path = "crates/feed" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 

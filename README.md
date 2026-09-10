@@ -18,6 +18,8 @@ lives in TypeScript against a canvas.
 crates/
   core/      domain vocabulary: fixed-point Price/Qty, Instrument, Trade, OrderBook
   engine/    bar construction and cluster/footprint computation
+  store/     segmented append-only tick history
+  feed/      venue wire formats, replay and synthetic feeds
 ui/          TypeScript front end (not started)
 web/         the marketing site, static HTML/CSS/JS
 ```
@@ -53,14 +55,24 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 | Component | Status |
 | --- | --- |
-| `atas-core` — prices, instruments, trades, L2 book | **Done**, 39 tests |
+| `atas-core` — prices, instruments, trades, L2 book | **Done**, 40 tests |
 | `atas-engine` — bars and cluster ladders | **Done**, 41 tests |
-| Tick storage — segmented on-disk history | Not started |
-| Feed adapters — Binance, Bybit, replay, synthetic | Not started |
+| `atas-store` — segmented on-disk tick history | **Done**, 25 tests |
+| `atas-feed` — wire formats, replay, synthetic | **Done**, 46 tests |
+| `atas-feed` — live WebSocket/REST transport | Not started |
 | Indicators — CVD, VWAP, profile, scanners | Not started |
 | Paper trading — matching, positions, PnL | Not started |
 | Tauri shell — state, commands, event bus | Not started |
 | UI — footprint chart, DOM, tape, workspaces | Not started |
+
+### Why the aggressor field is isolated per venue
+
+Binance reports `m` — *"was the buyer the maker?"* — so `m == true` means the
+**seller** crossed the spread. Bybit reports the taker side directly. Reading
+either one wrong inverts delta, every imbalance, and the sign of CVD across
+the whole platform while still drawing plausible-looking charts. Each venue's
+conversion is a single named function with its own direct test, and the two
+adapters deliberately do not share one.
 
 Known gaps in what is built:
 
@@ -70,6 +82,14 @@ Known gaps in what is built:
 - Volume and delta bars do not split the trade that crosses their threshold, so
   a bar may overshoot. This matches how most platforms behave and keeps a trade
   atomic in one bar.
+- The Binance and Bybit adapters translate wire formats but do not yet open
+  sockets. Transport — connect, resubscribe, sequence-gap recovery, REST
+  backfill — is the remaining part of that crate. It cannot be verified in the
+  environment this was built in, which has no exchange network access, so it is
+  being written after everything that can be tested offline.
+- Bybit trade ids are UUIDs and do not fit the store's `u64` id field, so they
+  are stored as zero rather than truncated into something that could collide.
+  Deduplication for that venue keys on `(ts, price, qty)` instead.
 
 ## The marketing site
 
